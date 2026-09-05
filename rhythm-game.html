@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>유튜브 리듬게임 프로토타입</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #14171f;
+    --line: #262b36;
+    --text: #e7e9ee;
+    --muted: #7a8094;
+    --lane1: #ff5470;
+    --lane2: #ffce54;
+    --lane3: #48e5c2;
+    --lane4: #5b8cff;
+    --judge-perfect: #48e5c2;
+    --judge-good: #ffce54;
+    --judge-miss: #ff5470;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Pretendard, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+  .layout {
+    display: flex;
+    gap: 20px;
+    max-width: 980px;
+    width: 100%;
+    align-items: flex-start;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    width: 300px;
+    flex-shrink: 0;
+  }
+  .panel h2 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  .panel label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 12px 0 4px;
+  }
+  .panel input[type="text"], .panel input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px;
+    font-size: 13px;
+  }
+  .panel textarea {
+    width: 100%;
+    height: 160px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+    resize: vertical;
+  }
+  .panel button {
+    margin-top: 14px;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: var(--lane3);
+    color: #052b22;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .panel button:active { transform: translateY(1px); }
+  .panel .hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .game-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .hud .score { font-size: 20px; color: var(--text); font-weight: 600; }
+  .stage {
+    position: relative;
+    background: #05060a;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; }
+  #player { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .judge-text {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    font-size: 22px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .keyhint {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <div class="panel">
+    <h2>영상 &amp; 채보 설정</h2>
+
+    <label>유튜브 영상 ID (예: dQw4w9WgXcQ)</label>
+    <input type="text" id="videoId" placeholder="영상 ID만 입력">
+
+    <label>채보 JSON</label>
+    <textarea id="chartJson"></textarea>
+
+    <label>레이턴시 보정 (ms, 음수면 노트를 앞당김)</label>
+    <input type="number" id="offsetMs" value="0" step="10">
+
+    <button id="loadBtn">불러오기 &amp; 재생 준비</button>
+    <div class="hint" id="apiStatus">유튜브 API 로딩 확인 중...</div>
+    <div class="hint">
+      D / F / J / K 키로 4개 레인을 연주합니다.<br>
+      채보는 { "bpm", "notes": [{ "time": 초, "lane": 0~3 }] } 형식의 JSON입니다.<br>
+      먼저 로드 후, 게임 화면을 클릭하면 영상이 재생되며 시작합니다.
+    </div>
+  </div>
+
+  <div class="game-wrap">
+    <div class="hud">
+      <span>COMBO <span id="combo" style="color:var(--text)">0</span></span>
+      <span class="score" id="score">0</span>
+      <span id="videoTime">0.00s</span>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="game" width="640" height="480"></canvas>
+      <div class="judge-text" id="judgeText"></div>
+      <div id="player"></div>
+    </div>
+    <div class="keyhint"><span>D</span><span>F</span><span>J</span><span>K</span></div>
+  </div>
+
+</div>
+
+<script src="https://www.youtube.com/iframe_api" async></script>
+<script>
+// ---------- 기본 샘플 채보 ----------
+const sampleChart = {
+  bpm: 120,
+  notes: [
+    { time: 2.0, lane: 0 }, { time: 2.5, lane: 1 },
+    { time: 3.0, lane: 2 }, { time: 3.5, lane: 3 },
+    { time: 4.0, lane: 0 }, { time: 4.25, lane: 1 },
+    { time: 4.5, lane: 2 }, { time: 4.75, lane: 3 },
+    { time: 5.5, lane: 1 }, { time: 6.0, lane: 2 }
+  ]
+};
+document.getElementById('chartJson').value = JSON.stringify(sampleChart, null, 2);
+
+// ---------- 상태 ----------
+const LANE_COLORS = ['var(--lane1)', 'var(--lane2)', 'var(--lane3)', 'var(--lane4)'];
+const LANE_KEYS = ['d', 'f', 'j', 'k'];
+const HIT_Y = 420;
+const APPROACH_TIME = 1.8; // 노트가 위에서 판정선까지 내려오는 시간(초)
+const HIT_WINDOW = { perfect: 0.05, good: 0.12, miss: 0.2 };
+
+let player = null;
+let playerReady = false;
+let apiReady = false;
+let pendingVideoId = null;
+let chart = null;
+let notes = [];
+let offsetSec = 0;
+let score = 0;
+let combo = 0;
+let started = false;
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const judgeTextEl = document.getElementById('judgeText');
+const scoreEl = document.getElementById('score');
+const comboEl = document.getElementById('combo');
+const videoTimeEl = document.getElementById('videoTime');
+
+// ---------- 유튜브 API ----------
+function onYouTubeIframeAPIReady() {
+  apiReady = true;
+  document.getElementById('apiStatus').textContent = '유튜브 API 로딩 완료 ✓';
+  document.getElementById('apiStatus').style.color = 'var(--lane3)';
+  if (pendingVideoId) {
+    createPlayer(pendingVideoId);
+    pendingVideoId = null;
+  }
+}
+
+// 몇 초 내로 API가 로딩되지 않으면 네트워크 차단 가능성을 안내
+setTimeout(() => {
+  if (!apiReady) {
+    const el = document.getElementById('apiStatus');
+    el.textContent = '유튜브 API 로딩 실패: 네트워크 차단(사내망/애드블록 등)일 수 있습니다. 콘솔(F12)을 확인해주세요.';
+    el.style.color = 'var(--judge-miss)';
+  }
+}, 5000);
+
+function createPlayer(videoId) {
+  if (player) { player.destroy(); }
+  const statusEl = document.getElementById('apiStatus');
+  player = new YT.Player('player', {
+    height: '1', width: '1', videoId: videoId,
+    playerVars: { controls: 0, disablekb: 1 },
+    events: {
+      onReady: () => {
+        playerReady = true;
+        statusEl.textContent = '영상 준비 완료! 게임 화면을 클릭하면 시작합니다.';
+        statusEl.style.color = 'var(--lane3)';
+      },
+      onError: (e) => {
+        const codeMsg = {
+          2: '잘못된 영상 ID입니다.',
+          5: 'HTML5 플레이어 오류입니다.',
+          100: '영상을 찾을 수 없습니다(삭제되었거나 비공개).',
+          101: '영상 소유자가 이 영상의 외부 사이트 재생(임베드)을 막아뒀습니다.',
+          150: '영상 소유자가 이 영상의 외부 사이트 재생(임베드)을 막아뒀습니다.'
+        };
+        statusEl.textContent = '재생 오류(코드 ' + e.data + '): ' + (codeMsg[e.data] || '알 수 없는 오류');
+        statusEl.style.color = 'var(--judge-miss)';
+      }
+    }
+  });
+
+  // 일정 시간 내에 onReady가 안 오면 file:// 환경 문제일 수 있음을 안내
+  setTimeout(() => {
+    if (!playerReady) {
+      statusEl.textContent = '영상이 아직 준비되지 않았습니다. file://로 직접 열었다면, 로컬 서버(python3 -m http.server 등)로 실행해보세요.';
+      statusEl.style.color = 'var(--lane2)';
+    }
+  }, 4000);
+}
+
+// ---------- 채보 로드 ----------
+document.getElementById('loadBtn').addEventListener('click', () => {
+  console.log('[로그] 불러오기 버튼 클릭됨');
+  const statusEl = document.getElementById('apiStatus');
+  const videoId = document.getElementById('videoId').value.trim();
+  offsetSec = (parseFloat(document.getElementById('offsetMs').value) || 0) / 1000;
+
+  try {
+    chart = JSON.parse(document.getElementById('chartJson').value);
+  } catch (e) {
+    statusEl.textContent = '채보 JSON 형식 오류: ' + e.message;
+    statusEl.style.color = 'var(--judge-miss)';
+    return;
+  }
+  notes = chart.notes.map(n => ({ time: n.time, lane: n.lane, hit: false, missed: false }));
+  score = 0; combo = 0; started = false;
+  updateHud();
+
+  if (!videoId) {
+    statusEl.textContent = '유튜브 영상 ID를 입력해주세요.';
+    statusEl.style.color = 'var(--judge-miss)';
+    return;
+  }
+
+  if (apiReady) {
+    createPlayer(videoId);
+    statusEl.textContent = '채보 ' + notes.length + '개 로드 완료. 영상 준비 중...';
+    statusEl.style.color = 'var(--lane3)';
+  } else {
+    pendingVideoId = videoId;
+    statusEl.textContent = '유튜브 API를 아직 불러오는 중입니다. 잠시 후 자동으로 재생 준비가 완료됩니다.';
+    statusEl.style.color = 'var(--lane2)';
+  }
+});
+
+document.getElementById('stage').addEventListener('click', () => {
+  if (!started && playerReady && player && player.playVideo) {
+    player.seekTo(0, true);
+    player.playVideo();
+    started = true;
+  }
+});
+
+// ---------- 현재 재생 시간 얻기 ----------
+function getCurrentTime() {
+  if (player && player.getCurrentTime) {
+    return player.getCurrentTime() + offsetSec;
+  }
+  return 0;
+}
+
+// ---------- 입력 판정 ----------
+window.addEventListener('keydown', (e) => {
+  const lane = LANE_KEYS.indexOf(e.key.toLowerCase());
+  if (lane === -1 || !started) return;
+  judgeLane(lane);
+});
+
+function judgeLane(lane) {
+  const now = getCurrentTime();
+  // 해당 레인에서 아직 안 맞았고, 판정 가능한 시간창 안에 있는 가장 가까운 노트 찾기
+  let best = null, bestDiff = Infinity;
+  for (const n of notes) {
+    if (n.lane !== lane || n.hit || n.missed) continue;
+    const diff = Math.abs(n.time - now);
+    if (diff < bestDiff) { bestDiff = diff; best = n; }
+  }
+  if (!best || bestDiff > HIT_WINDOW.miss) {
+    showJudge('MISS', 'var(--judge-miss)');
+    combo = 0;
+    updateHud();
+    return;
+  }
+  best.hit = true;
+  if (bestDiff <= HIT_WINDOW.perfect) { score += 100; showJudge('PERFECT', 'var(--judge-perfect)'); }
+  else { score += 50; showJudge('GOOD', 'var(--judge-good)'); }
+  combo += 1;
+  updateHud();
+}
+
+function showJudge(text, color) {
+  judgeTextEl.textContent = text;
+  judgeTextEl.style.color = color;
+  judgeTextEl.style.opacity = 1;
+  clearTimeout(showJudge._t);
+  showJudge._t = setTimeout(() => { judgeTextEl.style.opacity = 0; }, 300);
+}
+
+function updateHud() {
+  scoreEl.textContent = score;
+  comboEl.textContent = combo;
+}
+
+// ---------- 렌더 루프 ----------
+function laneX(lane) {
+  const w = canvas.width / 4;
+  return lane * w + w / 2;
+}
+
+function draw() {
+  const now = getCurrentTime();
+  videoTimeEl.textContent = now.toFixed(2) + 's';
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 레인 구분선
+  ctx.strokeStyle = '#1c2029';
+  for (let i = 1; i < 4; i++) {
+    const x = (canvas.width / 4) * i;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+
+  // 판정선
+  ctx.strokeStyle = '#3a4050';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, HIT_Y); ctx.lineTo(canvas.width, HIT_Y); ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // 노트 그리기 + 미스 판정
+  for (const n of notes) {
+    if (n.hit) continue;
+    const timeToHit = n.time - now;
+    if (!n.missed && timeToHit < -HIT_WINDOW.miss) {
+      n.missed = true;
+      combo = 0;
+      updateHud();
+      continue;
+    }
+    if (n.missed) continue;
+    if (timeToHit > APPROACH_TIME) continue;
+
+    const progress = 1 - (timeToHit / APPROACH_TIME);
+    const y = progress * HIT_Y;
+    const x = laneX(n.lane);
+    ctx.fillStyle = getComputedColor(LANE_COLORS[n.lane]);
+    ctx.beginPath();
+    ctx.roundRect(x - 34, y - 12, 68, 24, 6);
+    ctx.fill();
+  }
+
+  requestAnimationFrame(draw);
+}
+
+function getComputedColor(cssVar) {
+  const el = document.documentElement;
+  return getComputedStyle(el).getPropertyValue(cssVar.replace('var(', '').replace(')', '')) || cssVar;
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
