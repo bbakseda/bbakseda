@@ -2,178 +2,507 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>화단 설계 도구</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>스마트 화단 설계 도구</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
         body {
-            font-family: 'Malgun Gothic', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f8f9fa;
-            overflow: hidden;
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            margin: 0; padding: 0; background-color: #212529; color: #333;
+            overflow: hidden; display: flex; flex-direction: column; height: 100vh;
         }
+
+        /* 상단 툴바 */
         #toolbar {
-            background-color: #343a40;
-            padding: 15px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            position: relative;
-            z-index: 1000;
+            background-color: #2b3035; padding: 12px 15px; display: flex;
+            align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3); z-index: 100;
         }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 6px; }
         button {
-            padding: 10px 20px;
-            margin: 0 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background-color: #4CAF50;
-            color: white;
-            transition: background-color 0.2s;
+            padding: 9px 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+            border: none; border-radius: 6px; color: white; transition: all 0.2s ease;
         }
-        button:hover {
-            background-color: #45a049;
+        button:active { transform: scale(0.95); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-bed { background-color: #8d6e63; }
+        .btn-plant { background-color: #2e7d32; }
+        .btn-undo { background-color: #f39c12; }
+        .btn-redo { background-color: #e67e22; }
+        .btn-save { background-color: #0288d1; }
+        .btn-clear { background-color: #d32f2f; }
+
+        .mobile-hint {
+            display: none; width: 100%; text-align: center; color: #ffb74d;
+            font-size: 12px; font-weight: bold; margin-top: 5px;
         }
-        #canvas {
-            width: 100vw;
-            height: calc(100vh - 60px);
-            position: relative;
-            background-color: #e9ecef;
-            overflow: hidden;
-            background-image: radial-gradient(#ced4da 1px, transparent 1px);
-            background-size: 20px 20px; /* 모눈종이 느낌 */
+        @media (max-width: 768px) {
+            .mobile-hint { display: block; }
+            button { font-size: 13px; padding: 8px 10px; }
         }
-        .bed {
-            position: absolute;
-            background-color: #d4a373;
-            border: 3px dashed #8b5a2b;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: #5c3a21;
-            font-weight: bold;
-            cursor: grab;
-            user-select: none;
-            box-shadow: 3px 3px 10px rgba(0,0,0,0.1);
+
+        /* 작업 영역 */
+        #viewport {
+            flex: 1; position: relative; background-color: #f1f3f5; overflow: auto;
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(to right, rgba(0,0,0,0.12) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.12) 1px, transparent 1px);
+            background-size: 10px 10px, 10px 10px, 100px 100px, 100px 100px;
         }
-        .plant {
-            position: absolute;
-            background-color: #a8d5ba;
-            border: 2px solid #2d6a4f;
-            border-radius: 50%;
-            width: 80px;
-            height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-weight: bold;
-            color: #1b4332;
-            cursor: grab;
-            user-select: none;
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
-            z-index: 10; /* 식물이 화단 위로 올라오게 */
-            word-break: keep-all;
+        #canvas-area { position: absolute; width: 3000px; height: 2000px; top: 0; left: 0; }
+
+        /* 화단 스타일 */
+        .garden-bed {
+            position: absolute; border: 3px dashed #4e342e; border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.15), 4px 6px 12px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 10; cursor: move;
+            background-position: center; background-size: cover; background-repeat: no-repeat;
         }
-        .draggable:active {
-            cursor: grabbing;
+        .bed-dim-top, .bed-dim-left {
+            position: absolute; background: #4e342e; color: #fff;
+            padding: 4px 10px; border-radius: 14px; font-size: 13px; font-weight: bold; white-space: nowrap;
         }
+        .bed-dim-top { top: -30px; left: 50%; transform: translateX(-50%); }
+        .bed-dim-left { left: -32px; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); }
+        
+        .bed-title {
+            color: #fff; font-weight: 900; font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8); pointer-events: none;
+        }
+        .bed-size-desc {
+            color: #fff; font-size: 14px; margin-top: 4px; font-weight: 700;
+            pointer-events: none; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* 식물 동그라미 스타일 */
+        .plant-circle {
+            position: absolute; border-radius: 50%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+            border: 3px solid rgba(255,255,255,0.9); z-index: 30; transition: box-shadow 0.15s ease;
+            text-align: center; padding: 4px; cursor: move;
+            background-position: center; background-size: cover; background-repeat: no-repeat;
+        }
+        .plant-circle:hover { box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.5), 0 6px 14px rgba(0,0,0,0.4); }
+        
+        .plant-name {
+            font-weight: 900; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8);
+            pointer-events: none; line-height: 1.2;
+        }
+        .plant-dia {
+            font-size: 12px; color: #fff; font-weight: 700; margin-top: 3px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none;
+        }
+
+        /* 편집 모달 */
+        #editModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: #fff; padding: 24px; border-radius: 12px; width: 90%; max-width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            font-size: 18px; font-weight: bold; margin-bottom: 16px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px;
+        }
+        .form-row { margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .form-row label { font-size: 13px; font-weight: 600; color: #495057; }
+        .form-row input[type="text"], .form-row input[type="number"] {
+            padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 15px;
+        }
+        .form-row input[type="file"] {
+            font-size: 13px; padding: 5px 0;
+        }
+        .file-hint { font-size: 11px; color: #888; margin-top: -4px; }
+        
+        .modal-actions { display: flex; justify-content: space-between; margin-top: 18px; gap: 8px; }
+        .btn-confirm { background-color: #2e7d32; flex: 1; }
+        .btn-cancel { background-color: #6c757d; }
+        .btn-del { background-color: #d32f2f; }
     </style>
 </head>
 <body>
 
     <div id="toolbar">
-        <button onclick="addBed()">🟫 화단(직사각형) 추가</button>
-        <button onclick="addPlant()">🌱 식물(동그라미) 추가</button>
+        <div class="btn-group">
+            <button class="btn-bed" onclick="openAddBedModal()">🟫 화단 추가</button>
+            <button class="btn-plant" onclick="openAddPlantModal()">🌸 식물 추가</button>
+        </div>
+        <div class="btn-group">
+            <button class="btn-undo" id="btnUndo" onclick="undo()" disabled>↩️ 되돌리기</button>
+            <button class="btn-redo" id="btnRedo" onclick="redo()" disabled>↪️ 다시하기</button>
+        </div>
+        <div class="btn-group">
+            <button class="btn-save" onclick="exportToImage()">📸 앨범 저장</button>
+            <button class="btn-clear" onclick="clearCanvas()">🔄 모두 지우기</button>
+        </div>
+        <div class="mobile-hint">💡 스마트폰 편집 : 식물이나 화단을 두 번 톡톡 치세요!</div>
     </div>
 
-    <div id="canvas"></div>
+    <div id="viewport">
+        <div id="canvas-area"></div>
+    </div>
+
+    <div id="editModal">
+        <div class="modal-content">
+            <div class="modal-header" id="modalTitle">설정</div>
+            
+            <div class="form-row">
+                <label id="nameLabel">이름</label>
+                <input type="text" id="objName">
+            </div>
+
+            <div id="plantSizeRow" class="form-row">
+                <label>지름 (cm 단위)</label>
+                <input type="number" id="objDiaCm" min="10" max="500" step="5">
+            </div>
+
+            <div id="bedSizeRow" style="display:none;">
+                <div class="form-row">
+                    <label>가로 길이 (m 단위)</label>
+                    <input type="number" id="bedWidthM" min="0.5" max="20" step="0.1">
+                </div>
+                <div class="form-row">
+                    <label>세로 길이 (m 단위)</label>
+                    <input type="number" id="bedHeightM" min="0.5" max="20" step="0.1">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <label>🎨 단색 배경 채우기</label>
+                <input type="color" id="objColor" style="height: 40px; padding: 2px; width: 100%;">
+            </div>
+
+            <div class="form-row" style="border-top: 1px dashed #ccc; padding-top: 12px;">
+                <label>🖼️ 사진 배경 넣기 (선택)</label>
+                <input type="file" id="objImage" accept="image/*">
+                <div class="file-hint">사진을 첨부하면 단색 배경 대신 사진이 들어갑니다!</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-del" id="btnDelete" onclick="deleteTargetObject()">삭제</button>
+                <button class="btn-cancel" onclick="closeModal()">취소</button>
+                <button class="btn-confirm" onclick="applyModalChanges()">적용</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        // 1m를 50px로 환산하여 화면에 적절히 표시
-        const SCALE = 50; 
+        const SCALE = 100;
+        const canvasArea = document.getElementById('canvas-area');
+        
+        let currentTarget = null;
+        let isCreatingNew = false;
+        let targetType = ''; 
 
-        // 직사각형 화단 추가 함수
-        function addBed() {
-            const widthM = parseFloat(prompt("화단의 가로 길이를 미터(m) 단위로 입력하세요 (예: 3)"));
-            if (isNaN(widthM) || widthM <= 0) return;
+        // --- History ---
+        let historyStack = [];
+        let redoStack = [];
+        const MAX_HISTORY = 30;
 
-            const heightM = parseFloat(prompt("화단의 세로 길이를 미터(m) 단위로 입력하세요 (예: 2)"));
-            if (isNaN(heightM) || heightM <= 0) return;
-
-            const bed = document.createElement('div');
-            bed.classList.add('bed', 'draggable');
-            
-            // 크기 설정 (비율 적용)
-            bed.style.width = `${widthM * SCALE}px`;
-            bed.style.height = `${heightM * SCALE}px`;
-            
-            // 중앙에 초기 배치
-            bed.style.left = `calc(50% - ${widthM * SCALE / 2}px)`;
-            bed.style.top = `calc(50% - ${heightM * SCALE / 2}px)`;
-
-            // 텍스트 추가 (m와 cm 표시)
-            const widthCm = widthM * 100;
-            const heightCm = heightM * 100;
-            bed.innerHTML = `가로: ${widthM}m<br>(${widthCm}cm)<br>×<br>세로: ${heightM}m<br>(${heightCm}cm)`;
-
-            canvas.appendChild(bed);
-            makeDraggable(bed);
+        function saveState() {
+            historyStack.push(canvasArea.innerHTML);
+            if (historyStack.length > MAX_HISTORY) historyStack.shift();
+            redoStack = [];
+            updateHistoryButtons();
         }
 
-        // 식물 추가 함수
-        function addPlant() {
-            const name = prompt("식물의 이름을 입력하세요 (예: 강낭콩, 해바라기)");
-            if (!name) return;
-
-            const plant = document.createElement('div');
-            plant.classList.add('plant', 'draggable');
-            
-            // 중앙에 초기 배치
-            plant.style.left = `calc(50% - 40px)`;
-            plant.style.top = `calc(50% - 40px)`;
-            plant.innerText = name;
-
-            canvas.appendChild(plant);
-            makeDraggable(plant);
+        function undo() {
+            if (historyStack.length > 1) {
+                redoStack.push(historyStack.pop());
+                restoreState(historyStack[historyStack.length - 1]);
+            }
         }
 
-        // 마우스 드래그 앤 드롭 로직
-        function makeDraggable(element) {
-            let isDragging = false;
-            let startX, startY, initialLeft, initialTop;
+        function redo() {
+            if (redoStack.length > 0) {
+                const nextState = redoStack.pop();
+                historyStack.push(nextState);
+                restoreState(nextState);
+            }
+        }
 
-            element.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                startX = e.clientX;
-                startY = e.clientY;
-                initialLeft = element.offsetLeft;
-                initialTop = element.offsetTop;
-                
-                // 드래그 중인 요소를 가장 위로
-                element.style.zIndex = element.classList.contains('plant') ? 100 : 50;
+        function restoreState(htmlContent) {
+            canvasArea.innerHTML = htmlContent;
+            canvasArea.querySelectorAll('.garden-bed, .plant-circle').forEach(el => attachObjectEvents(el));
+            updateHistoryButtons();
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById('btnUndo').disabled = historyStack.length <= 1;
+            document.getElementById('btnRedo').disabled = redoStack.length === 0;
+        }
+
+        // --- 드래그 이벤트 (터치+마우스) ---
+        let draggingElement = null;
+        let dragStartX, dragStartY, origLeft, origTop, hasMoved = false;
+
+        function getClientPos(e) {
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        const dragMove = (e) => {
+            if (!draggingElement) return;
+            e.preventDefault();
+            const pos = getClientPos(e);
+            const dx = pos.x - dragStartX; const dy = pos.y - dragStartY;
+            const snap = 10;
+            let newX = Math.round((origLeft + dx) / snap) * snap;
+            let newY = Math.round((origTop + dy) / snap) * snap;
+            draggingElement.style.left = `${Math.max(0, newX)}px`;
+            draggingElement.style.top = `${Math.max(0, newY)}px`;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
+        };
+
+        const dragEnd = (e) => {
+            if (draggingElement) {
+                draggingElement.style.zIndex = draggingElement.classList.contains('plant-circle') ? 30 : 10;
+                draggingElement = null;
+                if (hasMoved) { saveState(); hasMoved = false; }
+            }
+        };
+
+        window.addEventListener('mousemove', dragMove, { passive: false });
+        window.addEventListener('touchmove', dragMove, { passive: false });
+        window.addEventListener('mouseup', dragEnd);
+        window.addEventListener('touchend', dragEnd);
+
+        function attachObjectEvents(element) {
+            const dragStart = (e) => {
+                if (e.type === 'mousedown' && e.button !== 0) return; 
+                draggingElement = element;
+                const pos = getClientPos(e);
+                dragStartX = pos.x; dragStartY = pos.y;
+                origLeft = element.offsetLeft; origTop = element.offsetTop;
+                hasMoved = false;
+                element.style.zIndex = element.classList.contains('plant-circle') ? 100 : 25;
+            };
+
+            element.addEventListener('mousedown', dragStart);
+            element.addEventListener('touchstart', dragStart, { passive: true });
+
+            element.addEventListener('contextmenu', (e) => {
+                e.preventDefault(); e.stopPropagation(); openEditModal(element);
             });
 
-            document.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                e.preventDefault();
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
-                element.style.left = `${initialLeft + dx}px`;
-                element.style.top = `${initialTop + dy}px`;
-            });
-
-            document.addEventListener('mouseup', () => {
-                if (isDragging) {
-                    isDragging = false;
-                    // z-index 원상복구 (식물이 화단보다 항상 위에 있도록 설정)
-                    element.style.zIndex = element.classList.contains('plant') ? 10 : 1;
+            let lastTap = 0;
+            element.addEventListener('touchend', (e) => {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 400 && tapLength > 0 && !hasMoved) {
+                    e.preventDefault(); openEditModal(element);
                 }
+                lastTap = currentTime;
             });
         }
+
+        // --- 객체 생성 및 렌더링 ---
+        function createBed(name, wM, hM, color, x = 120, y = 100) {
+            const bed = document.createElement('div');
+            bed.className = 'garden-bed';
+            bed.dataset.type = 'bed'; bed.dataset.name = name;
+            bed.dataset.widthM = wM; bed.dataset.heightM = hM; bed.dataset.color = color;
+            bed.style.left = `${x}px`; bed.style.top = `${y}px`;
+            updateBedDisplay(bed); canvasArea.appendChild(bed); attachObjectEvents(bed); return bed;
+        }
+
+        function updateBedDisplay(bed) {
+            const wM = parseFloat(bed.dataset.widthM); const hM = parseFloat(bed.dataset.heightM);
+            bed.style.width = `${wM * SCALE}px`; bed.style.height = `${hM * SCALE}px`;
+            
+            // 사진(Base64)이 데이터셋에 있으면 배경으로 지정, 없으면 단색 지정
+            if (bed.dataset.bgImage) {
+                bed.style.backgroundImage = `url(${bed.dataset.bgImage})`;
+                bed.style.backgroundColor = 'transparent';
+                bed.style.boxShadow = 'inset 0 0 0 2000px rgba(0,0,0,0.3)';
+            } else {
+                bed.style.backgroundImage = 'none';
+                bed.style.backgroundColor = bed.dataset.color;
+                bed.style.boxShadow = 'inset 0 0 20px rgba(0,0,0,0.15), 4px 6px 12px rgba(0,0,0,0.1)';
+            }
+
+            bed.innerHTML = `<div class="bed-dim-top">가로: ${wM}m (${Math.round(wM * 100)}cm)</div><div class="bed-dim-left">세로: ${hM}m (${Math.round(hM * 100)}cm)</div><div class="bed-title">${bed.dataset.name}</div><div class="bed-size-desc">${wM}m × ${hM}m</div>`;
+        }
+
+        function createPlant(name, diaCm, color, x = 200, y = 200) {
+            const plant = document.createElement('div');
+            plant.className = 'plant-circle';
+            plant.dataset.type = 'plant'; plant.dataset.name = name;
+            plant.dataset.diaCm = diaCm; plant.dataset.color = color;
+            plant.style.left = `${x}px`; plant.style.top = `${y}px`;
+            updatePlantDisplay(plant); canvasArea.appendChild(plant); attachObjectEvents(plant); return plant;
+        }
+
+        function updatePlantDisplay(plant) {
+            const diaCm = parseFloat(plant.dataset.diaCm); const diaPx = (diaCm / 100) * SCALE;
+            plant.style.width = `${diaPx}px`; plant.style.height = `${diaPx}px`;
+            
+            if (plant.dataset.bgImage) {
+                plant.style.backgroundImage = `url(${plant.dataset.bgImage})`;
+                plant.style.backgroundColor = 'transparent';
+                plant.style.boxShadow = 'inset 0 0 0 2000px rgba(0,0,0,0.25), 0 4px 10px rgba(0,0,0,0.25)';
+            } else {
+                plant.style.backgroundImage = 'none';
+                plant.style.backgroundColor = plant.dataset.color;
+                plant.style.boxShadow = '0 4px 10px rgba(0,0,0,0.25)';
+            }
+
+            const fontSize = Math.max(12, Math.min(22, diaPx / 4));
+            plant.innerHTML = `<div class="plant-name" style="font-size: ${fontSize}px;">${plant.dataset.name}</div><div class="plant-dia">⌀ ${diaCm}cm</div>`;
+        }
+
+        // --- 모달 로직 ---
+        function openAddPlantModal() {
+            isCreatingNew = true; targetType = 'plant'; currentTarget = null;
+            document.getElementById('modalTitle').innerText = "🌸 새 식물 추가";
+            document.getElementById('objName').value = "해바라기";
+            document.getElementById('objDiaCm').value = "60";
+            document.getElementById('objColor').value = "#fbc02d";
+            document.getElementById('objImage').value = ""; // 파일 선택기 초기화
+            
+            document.getElementById('plantSizeRow').style.display = 'flex';
+            document.getElementById('bedSizeRow').style.display = 'none';
+            document.getElementById('btnDelete').style.display = 'none';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function openAddBedModal() {
+            isCreatingNew = true; targetType = 'bed'; currentTarget = null;
+            document.getElementById('modalTitle').innerText = "🟫 새 화단 추가";
+            document.getElementById('objName').value = "중앙 화단";
+            document.getElementById('bedWidthM').value = "2.5";
+            document.getElementById('bedHeightM').value = "1.5";
+            document.getElementById('objColor').value = "#a1887f";
+            document.getElementById('objImage').value = "";
+            
+            document.getElementById('plantSizeRow').style.display = 'none';
+            document.getElementById('bedSizeRow').style.display = 'block';
+            document.getElementById('btnDelete').style.display = 'none';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function openEditModal(target) {
+            isCreatingNew = false; currentTarget = target; targetType = target.dataset.type;
+            document.getElementById('btnDelete').style.display = 'block';
+            document.getElementById('objName').value = target.dataset.name;
+            document.getElementById('objColor').value = target.dataset.color;
+            document.getElementById('objImage').value = ""; 
+
+            if (targetType === 'plant') {
+                document.getElementById('modalTitle').innerText = "🌸 식물 편집";
+                document.getElementById('objDiaCm').value = target.dataset.diaCm;
+                document.getElementById('plantSizeRow').style.display = 'flex';
+                document.getElementById('bedSizeRow').style.display = 'none';
+            } else {
+                document.getElementById('modalTitle').innerText = "🟫 화단 편집";
+                document.getElementById('bedWidthM').value = target.dataset.widthM;
+                document.getElementById('bedHeightM').value = target.dataset.heightM;
+                document.getElementById('plantSizeRow').style.display = 'none';
+                document.getElementById('bedSizeRow').style.display = 'block';
+            }
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('editModal').style.display = 'none'; currentTarget = null; }
+
+        function applyModalChanges() {
+            const name = document.getElementById('objName').value.trim() || '이름 없음';
+            const color = document.getElementById('objColor').value;
+            const fileInput = document.getElementById('objImage');
+            const file = fileInput.files[0];
+
+            const finalizeUpdate = (imgData) => {
+                if (targetType === 'plant') {
+                    const dia = parseFloat(document.getElementById('objDiaCm').value) || 50;
+                    if (isCreatingNew) {
+                        const plant = createPlant(name, dia, color, 150, 150);
+                        if (imgData) plant.dataset.bgImage = imgData;
+                        updatePlantDisplay(plant);
+                    } else {
+                        currentTarget.dataset.name = name;
+                        currentTarget.dataset.diaCm = dia;
+                        currentTarget.dataset.color = color;
+                        if (imgData) currentTarget.dataset.bgImage = imgData;
+                        updatePlantDisplay(currentTarget);
+                    }
+                } else {
+                    const wM = parseFloat(document.getElementById('bedWidthM').value) || 2;
+                    const hM = parseFloat(document.getElementById('bedHeightM').value) || 1;
+                    if (isCreatingNew) {
+                        const bed = createBed(name, wM, hM, color, 80, 80);
+                        if (imgData) bed.dataset.bgImage = imgData;
+                        updateBedDisplay(bed);
+                    } else {
+                        currentTarget.dataset.name = name;
+                        currentTarget.dataset.widthM = wM;
+                        currentTarget.dataset.heightM = hM;
+                        currentTarget.dataset.color = color;
+                        if (imgData) currentTarget.dataset.bgImage = imgData;
+                        updateBedDisplay(currentTarget);
+                    }
+                }
+                closeModal(); saveState();
+            };
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => finalizeUpdate(e.target.result);
+                reader.readAsDataURL(file);
+            } else {
+                finalizeUpdate(null); 
+            }
+        }
+
+        function deleteTargetObject() {
+            if (currentTarget) { currentTarget.remove(); saveState(); }
+            closeModal();
+        }
+
+        function clearCanvas() {
+            if (confirm("화면을 완전히 초기화하시겠습니까?")) { canvasArea.innerHTML = ''; saveState(); }
+        }
+
+        function exportToImage() {
+            const elements = canvasArea.querySelectorAll('.garden-bed, .plant-circle');
+            if (elements.length === 0) { alert("저장할 화단이나 식물이 없습니다."); return; }
+            
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            elements.forEach(el => {
+                const x = el.offsetLeft; const y = el.offsetTop;
+                const w = el.offsetWidth; const h = el.offsetHeight;
+                if (x < minX) minX = x; if (y < minY) minY = y;
+                if (x + w > maxX) maxX = x + w; if (y + h > maxY) maxY = y + h;
+            });
+            const p = 80;
+            
+            html2canvas(canvasArea, {
+                backgroundColor: '#f1f3f5', x: Math.max(0, minX - p), y: Math.max(0, minY - p),
+                width: (maxX - minX) + (p * 2), height: (maxY - minY) + (p * 2), scale: 2, useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `화단설계도_${new Date().toISOString().slice(0,10)}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        window.onload = () => {
+            createBed("메인 화단", 3.0, 2.0, "#a1887f", 120, 100);
+            createPlant("장미", 50, "#e91e63", 160, 140);
+            createPlant("해바라기", 70, "#fbc02d", 250, 120);
+            createPlant("라벤더", 40, "#7e57c2", 360, 180);
+            saveState();
+        };
     </script>
 </body>
 </html>
