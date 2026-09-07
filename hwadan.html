@@ -85,21 +85,30 @@
 
         /* 식물 동그라미 스타일 */
         .plant-circle {
-            position: absolute; border-radius: 50%; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+            position: absolute; border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
             border: 3px solid rgba(255,255,255,0.9); z-index: 30; transition: box-shadow 0.15s ease;
-            text-align: center; padding: 4px; cursor: move;
-            background-position: center; background-size: cover; background-repeat: no-repeat;
+            cursor: move; background-position: center; background-size: cover; background-repeat: no-repeat;
         }
         .plant-circle:hover { box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.5), 0 6px 14px rgba(0,0,0,0.4); }
         
+        /* 💡 글자 찌그러짐 방지용 컨테이너 */
+        .plant-content {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); /* 정확히 중앙에 띄움 */
+            display: flex; flex-direction: column; align-items: center;
+            pointer-events: none; /* 클릭 방해 안 함 */
+        }
+
         .plant-name {
             font-weight: 900; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8);
             pointer-events: none; line-height: 1.2;
+            white-space: nowrap; /* 💡 강제 줄바꿈 방지 */
         }
         .plant-dia {
             font-size: 12px; color: #fff; font-weight: 700; margin-top: 3px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none;
+            white-space: nowrap; /* 💡 강제 줄바꿈 방지 */
         }
 
         /* 편집 모달 */
@@ -118,9 +127,7 @@
         .form-row input[type="text"], .form-row input[type="number"] {
             padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 15px;
         }
-        .form-row input[type="file"] {
-            font-size: 13px; padding: 5px 0;
-        }
+        .form-row input[type="file"] { font-size: 13px; padding: 5px 0; }
         .file-hint { font-size: 11px; color: #888; margin-top: -4px; }
         
         .modal-actions { display: flex; justify-content: space-between; margin-top: 18px; gap: 8px; }
@@ -320,7 +327,6 @@
             const wM = parseFloat(bed.dataset.widthM); const hM = parseFloat(bed.dataset.heightM);
             bed.style.width = `${wM * SCALE}px`; bed.style.height = `${hM * SCALE}px`;
             
-            // 사진(Base64)이 데이터셋에 있으면 배경으로 지정, 없으면 단색 지정
             if (bed.dataset.bgImage) {
                 bed.style.backgroundImage = `url(${bed.dataset.bgImage})`;
                 bed.style.backgroundColor = 'transparent';
@@ -358,7 +364,14 @@
             }
 
             const fontSize = Math.max(12, Math.min(22, diaPx / 4));
-            plant.innerHTML = `<div class="plant-name" style="font-size: ${fontSize}px;">${plant.dataset.name}</div><div class="plant-dia">⌀ ${diaCm}cm</div>`;
+            
+            // 💡 찌그러짐 방지용 컨테이너 HTML 구조 적용
+            plant.innerHTML = `
+                <div class="plant-content">
+                    <div class="plant-name" style="font-size: ${fontSize}px;">${plant.dataset.name}</div>
+                    <div class="plant-dia">⌀ ${diaCm}cm</div>
+                </div>
+            `;
         }
 
         // --- 모달 로직 ---
@@ -368,7 +381,7 @@
             document.getElementById('objName').value = "해바라기";
             document.getElementById('objDiaCm').value = "60";
             document.getElementById('objColor').value = "#fbc02d";
-            document.getElementById('objImage').value = ""; // 파일 선택기 초기화
+            document.getElementById('objImage').value = "";
             
             document.getElementById('plantSizeRow').style.display = 'flex';
             document.getElementById('bedSizeRow').style.display = 'none';
@@ -500,7 +513,7 @@
             createBed("메인 화단", 3.0, 2.0, "#a1887f", 120, 100);
             createPlant("장미", 50, "#e91e63", 160, 140);
             createPlant("해바라기", 70, "#fbc02d", 250, 120);
-            createPlant("라벤더", 40, "#7e57c2", 360, 180);
+            createPlant("라벤더", 20, "#7e57c2", 360, 180);
             saveState();
         };
     </script>
