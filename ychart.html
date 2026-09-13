@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>실시간 자유배치 Y-Chart</title>
+  <title>실시간 다중 보드 Y-Chart</title>
   
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -45,19 +45,42 @@
       border-bottom: 2px solid #e2dfd2;
       box-shadow: 0 2px 5px rgba(0,0,0,0.04);
       z-index: 50;
-      gap: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
     }
+
+    /* 보드 선택 및 관리 컨트롤 */
+    .board-select-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .board-select {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #1e293b;
+      padding: 6px 10px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      outline: none;
+      cursor: pointer;
+      max-width: 180px;
+    }
+    .board-select:focus { border-color: #475569; }
 
     .topic-box {
       display: flex;
       align-items: center;
       gap: 6px;
       flex: 1;
+      min-width: 180px;
       max-width: 320px;
     }
 
     .topic-title {
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 800;
       color: #1e293b;
       border: none;
@@ -86,6 +109,8 @@
       white-space: nowrap;
     }
     .btn-tool:hover { background: #e2e8f0; }
+    .btn-tool.primary { background: #334155; color: #ffffff; border-color: #334155; }
+    .btn-tool.primary:hover { background: #1e293b; }
     .btn-tool.danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
 
     /* Y차트 전지 캔버스 */
@@ -108,7 +133,6 @@
       z-index: 1;
     }
 
-    /* 상단/좌/우 고정 입력 및 라벨 헤더 UI */
     .zone-hud {
       position: absolute;
       z-index: 20;
@@ -118,7 +142,6 @@
       pointer-events: auto;
     }
 
-    /* 3개 구역 HUD 위치 재설정 */
     .hud-continue { top: 18px; left: 50%; transform: translateX(-50%); width: 360px; }
     .hud-stop { top: 62%; left: 30px; width: 300px; }
     .hud-start { top: 62%; right: 30px; width: 300px; }
@@ -139,16 +162,15 @@
       border: 1px solid #d1cdb8;
       border-radius: 4px;
       outline: none;
-      min-width: 0; /* flex 컨테이너 축소 방지 */
+      min-width: 0;
     }
-    
-    /* 붙이기 버튼 가로 고정 및 스타일 강화 */
+
     .btn-add {
       background: #334155;
       color: #fff;
       border: none;
       padding: 0 12px;
-      min-width: 68px; /* 글자 줄바꿈 방지 */
+      min-width: 68px;
       border-radius: 4px;
       font-size: 0.85rem;
       font-weight: 700;
@@ -157,7 +179,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background-color 0.15s;
     }
     .btn-add:hover { background: #1e293b; }
 
@@ -245,7 +266,7 @@
       z-index: 99 !important;
     }
 
-    /* 상세 팝업 모달 */
+    /* 상세 팝업 */
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -270,11 +291,6 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      animation: popIn 0.2s ease-out;
-    }
-    @keyframes popIn {
-      from { transform: scale(0.9); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
     }
 
     .modal-text {
@@ -306,7 +322,6 @@
       color: #1e293b;
       cursor: pointer;
     }
-    .modal-btn-like:active { transform: scale(0.94); }
 
     .modal-btn-del {
       background: transparent;
@@ -325,7 +340,6 @@
       cursor: pointer;
     }
 
-    /* 하단 가이드 바 */
     .guide-bar {
       position: absolute;
       bottom: 8px;
@@ -338,7 +352,6 @@
       font-size: 0.75rem;
       font-weight: 600;
       color: #475569;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
       pointer-events: none;
       z-index: 40;
       white-space: nowrap;
@@ -351,39 +364,47 @@
       .zone-title { font-size: 1.8rem; }
       .mini-note { width: 60px; height: 60px; }
       .btn-add { min-width: 58px; padding: 0 8px; font-size: 0.8rem; }
-      .guide-bar { font-size: 0.68rem; padding: 3px 10px; width: 92%; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+      .guide-bar { font-size: 0.68rem; width: 92%; text-align: center; }
     }
   </style>
 </head>
 <body>
 
   <header>
-    <div class="topic-box">
-      <span>📝</span>
-      <input type="text" id="topicInput" class="topic-title" placeholder="간담회 주제" />
+    <!-- 보드 목록 선택 박스 -->
+    <div class="board-select-group">
+      <select id="boardSelect" class="board-select" onchange="changeBoard(this.value)">
+        <option value="main">기본 보드</option>
+      </select>
+      <button class="btn-tool primary" onclick="promptCreateBoard()">+ 새 보드</button>
+      <button class="btn-tool danger" onclick="deleteCurrentBoard()" title="현재 보드 삭제">🗑️</button>
     </div>
 
+    <!-- 현재 보드 주제명 -->
+    <div class="topic-box">
+      <span>📝</span>
+      <input type="text" id="topicInput" class="topic-title" placeholder="현재 보드 주제" />
+    </div>
+
+    <!-- 도구 모음 -->
     <div class="toolbar">
       <button class="btn-tool" onclick="exportJPG()">📸 JPG</button>
       <button class="btn-tool" onclick="downloadJSON()">💾 백업</button>
       <button class="btn-tool" onclick="triggerFileInput()">📂 열기</button>
       <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadJSON(event)">
-      <button class="btn-tool danger" onclick="createNewSession()">✨ 비우기</button>
+      <button class="btn-tool" onclick="clearCurrentNotes()">🧹 메모 비우기</button>
     </div>
   </header>
 
   <main id="chart-board">
-    <!-- 균등한 120도 각도 3분할 매직펜 Y선 -->
+    <!-- 균등 120도 분할선 -->
     <svg class="y-svg" xmlns="http://www.w3.org/2000/svg">
-      <!-- 좌상단 대각선: 화면 5% 지점 -> 중앙 (50%, 50%) -->
       <line x1="5%" y1="0%" x2="50%" y2="50%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
-      <!-- 우상단 대각선: 화면 95% 지점 -> 중앙 (50%, 50%) -->
       <line x1="95%" y1="0%" x2="50%" y2="50%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
-      <!-- 중앙 수직선: 중앙 (50%, 50%) -> 맨 아래 (50%, 100%) -->
       <line x1="50%" y1="50%" x2="50%" y2="100%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
     </svg>
 
-    <!-- 1. 계속 HUD -->
+    <!-- 1. 계속 -->
     <div class="zone-hud hud-continue">
       <div class="input-bar">
         <input type="text" id="input-continue" placeholder="[계속] 유지할 점..." onkeydown="handleEnter(event, 'continue')">
@@ -392,7 +413,7 @@
       <div class="zone-title">계속</div>
     </div>
 
-    <!-- 2. 멈춤 HUD -->
+    <!-- 2. 멈춤 -->
     <div class="zone-hud hud-stop">
       <div class="input-bar">
         <input type="text" id="input-stop" placeholder="[멈춤] 개선할 점..." onkeydown="handleEnter(event, 'stop')">
@@ -401,7 +422,7 @@
       <div class="zone-title">멈춤</div>
     </div>
 
-    <!-- 3. 도전 HUD -->
+    <!-- 3. 도전 -->
     <div class="zone-hud hud-start">
       <div class="input-bar">
         <input type="text" id="input-start" placeholder="[도전] 시도할 점..." onkeydown="handleEnter(event, 'start')">
@@ -410,16 +431,14 @@
       <div class="zone-title">도전</div>
     </div>
 
-    <!-- 메모 레이어 -->
     <div id="notes-layer"></div>
 
-    <!-- 가이드 바 -->
     <div class="guide-bar">
       💡 모바일: 짧게 터치(내용보기) · 길게 터치(위치이동) | PC: 마우스 드래그
     </div>
   </main>
 
-  <!-- 상세 보기 팝업 모달 -->
+  <!-- 상세 모달 -->
   <div class="modal-backdrop" id="detailModal" onclick="closeModal(event)">
     <div class="detail-card" onclick="event.stopPropagation()">
       <button class="modal-btn-close" onclick="closeModal()">×</button>
@@ -445,26 +464,105 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const rootRef = db.ref('ychart_session');
 
+    // 루트 레퍼런스
+    const boardsListRef = db.ref('board_metadata');
+    let currentBoardId = 'main';
+    let currentBoardRef = db.ref(`ychart_sessions/${currentBoardId}`);
     let currentSessionData = { topic: '', notes: {} };
+
+    const boardSelect = document.getElementById('boardSelect');
+    const topicInput = document.getElementById('topicInput');
     const board = document.getElementById('chart-board');
     const notesLayer = document.getElementById('notes-layer');
-    const topicInput = document.getElementById('topicInput');
 
-    rootRef.on('value', snap => {
-      currentSessionData = snap.val() || { topic: '', notes: {} };
-      if (document.activeElement !== topicInput) {
-        topicInput.value = currentSessionData.topic || '';
+    // 1. 보드 메타데이터(목록) 실시간 구독
+    boardsListRef.on('value', snap => {
+      const list = snap.val();
+      boardSelect.innerHTML = '';
+
+      if (!list || Object.keys(list).length === 0) {
+        // 기본 보드 자동 등록
+        boardsListRef.child('main').set({ title: '기본 보드', createdAt: Date.now() });
+        return;
       }
-      renderNotes(currentSessionData.notes);
+
+      Object.keys(list).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = list[id].title || id;
+        if (id === currentBoardId) opt.selected = true;
+        boardSelect.appendChild(opt);
+      });
+
+      // 만약 보고 있던 보드가 삭제되었다면 첫 번째 보드로 전환
+      if (!list[currentBoardId]) {
+        changeBoard(Object.keys(list)[0]);
+      }
     });
 
+    // 2. 현재 보드 변경 및 데이터 연결
+    function changeBoard(newBoardId) {
+      if (!newBoardId) return;
+      currentBoardId = newBoardId;
+      boardSelect.value = newBoardId;
+
+      // 이전 리스너 해제 후 새 경로 바인딩
+      currentBoardRef.off();
+      currentBoardRef = db.ref(`ychart_sessions/${currentBoardId}`);
+
+      currentBoardRef.on('value', snap => {
+        currentSessionData = snap.val() || { topic: '', notes: {} };
+        if (document.activeElement !== topicInput) {
+          topicInput.value = currentSessionData.topic || '';
+        }
+        renderNotes(currentSessionData.notes);
+      });
+    }
+
+    // 3. 새 보드 생성
+    function promptCreateBoard() {
+      const title = prompt('새로운 보드(분임/안건) 이름을 입력하세요:', '2분임 회고');
+      if (!title || !title.trim()) return;
+
+      const newId = 'board_' + Date.now();
+      boardsListRef.child(newId).set({
+        title: title.trim(),
+        createdAt: Date.now()
+      });
+
+      db.ref(`ychart_sessions/${newId}`).set({
+        topic: title.trim(),
+        notes: null
+      }).then(() => {
+        changeBoard(newId);
+      });
+    }
+
+    // 4. 현재 보드 삭제
+    function deleteCurrentBoard() {
+      const options = boardSelect.options;
+      if (options.length <= 1) {
+        alert('최소 1개의 보드는 유지되어야 합니다.');
+        return;
+      }
+
+      if (confirm(`'${boardSelect.options[boardSelect.selectedIndex].text}' 보드를 정말 삭제하시겠습니까?`)) {
+        boardsListRef.child(currentBoardId).remove();
+        db.ref(`ychart_sessions/${currentBoardId}`).remove();
+      }
+    }
+
+    // 5. 주제 수정 시 보드 메타 제목과 동시 동기화
     topicInput.addEventListener('input', () => {
-      rootRef.child('topic').set(topicInput.value);
+      const val = topicInput.value;
+      currentBoardRef.child('topic').set(val);
+      if (val.trim()) {
+        boardsListRef.child(currentBoardId).update({ title: val.trim() });
+      }
     });
 
-    // 넓어진 각 구역에 맞춘 스폰 위치 재설정
+    // 위치 스폰 영역
     const spawnPositions = {
       continue: { minX: 30, maxX: 66, minY: 15, maxY: 42 },
       stop:     { minX: 8,  maxX: 42, minY: 55, maxY: 88 },
@@ -481,7 +579,7 @@
       const y = spawn.minY + Math.random() * (spawn.maxY - spawn.minY);
       const rot = (Math.random() * 6 - 3).toFixed(1);
 
-      rootRef.child('notes').push({
+      currentBoardRef.child('notes').push({
         category: cat,
         text: text,
         x: parseFloat(x.toFixed(1)),
@@ -548,9 +646,7 @@
         if (e.button !== 0) return;
         startDrag(e.clientX, e.clientY);
 
-        function onMouseMove(moveEvent) {
-          moveDrag(moveEvent.clientX, moveEvent.clientY);
-        }
+        function onMouseMove(moveEvent) { moveDrag(moveEvent.clientX, moveEvent.clientY); }
         function onMouseUp() {
           window.removeEventListener('mousemove', onMouseMove);
           window.removeEventListener('mouseup', onMouseUp);
@@ -579,9 +675,7 @@
         const touch = e.touches[0];
         const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
 
-        if (dist > 8 && !isLongPressed) {
-          clearTimeout(longPressTimer);
-        }
+        if (dist > 8 && !isLongPressed) clearTimeout(longPressTimer);
 
         if (isLongPressed && isDragging) {
           e.preventDefault();
@@ -589,10 +683,9 @@
         }
       }, { passive: false });
 
-      el.addEventListener('touchend', e => {
+      el.addEventListener('touchend', () => {
         clearTimeout(longPressTimer);
         el.classList.remove('long-pressed');
-
         if (isDragging) {
           endDrag();
         } else if (!hasMoved && !isLongPressed) {
@@ -636,11 +729,9 @@
         el.classList.remove('dragging');
 
         if (hasMoved) {
-          const finalX = parseFloat(el.style.left);
-          const finalY = parseFloat(el.style.top);
-          rootRef.child(`notes/${el.dataset.key}`).update({
-            x: finalX,
-            y: finalY
+          currentBoardRef.child(`notes/${el.dataset.key}`).update({
+            x: parseFloat(el.style.left),
+            y: parseFloat(el.style.top)
           });
         }
       }
@@ -650,10 +741,7 @@
       });
     }
 
-    let activeModalKey = null;
-
     function openDetailModal(key) {
-      activeModalKey = key;
       const note = currentSessionData.notes ? currentSessionData.notes[key] : null;
       if (!note) return;
 
@@ -662,7 +750,7 @@
 
       const likeBtn = document.getElementById('modalLikeBtn');
       likeBtn.onclick = () => {
-        rootRef.child(`notes/${key}/likes`).transaction(l => (l || 0) + 1).then(res => {
+        currentBoardRef.child(`notes/${key}/likes`).transaction(l => (l || 0) + 1).then(res => {
           document.getElementById('modalLikesCount').innerText = res.snapshot.val();
         });
       };
@@ -670,7 +758,7 @@
       const delBtn = document.getElementById('modalDelBtn');
       delBtn.onclick = () => {
         if (confirm('이 메모를 삭제하시겠습니까?')) {
-          rootRef.child(`notes/${key}`).remove();
+          currentBoardRef.child(`notes/${key}`).remove();
           closeModal();
         }
       };
@@ -680,7 +768,6 @@
 
     function closeModal() {
       document.getElementById('detailModal').classList.remove('show');
-      activeModalKey = null;
     }
 
     async function exportJPG() {
@@ -698,7 +785,7 @@
 
         const image = canvas.toDataURL('image/jpeg', 0.95);
         const link = document.createElement('a');
-        const topicName = topicInput.value.trim() || '간담회_Y차트';
+        const topicName = topicInput.value.trim() || '간담회_보드';
         link.download = `${topicName}_${new Date().toISOString().slice(0,10)}.jpg`;
         link.href = image;
         link.click();
@@ -713,9 +800,9 @@
     function downloadJSON() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentSessionData, null, 2));
       const a = document.createElement('a');
-      const topicName = topicInput.value.trim() || '간담회_Y차트';
+      const topicName = topicInput.value.trim() || '보드_백업';
       a.setAttribute("href", dataStr);
-      a.setAttribute("download", `${topicName}_백업_${new Date().toISOString().slice(0,10)}.json`);
+      a.setAttribute("download", `${topicName}_${new Date().toISOString().slice(0,10)}.json`);
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -730,20 +817,18 @@
       reader.onload = function(e) {
         try {
           const parsed = JSON.parse(e.target.result);
-          if (confirm('파일을 불러오시겠습니까? 현재 보드가 대체됩니다.')) {
-            rootRef.set(parsed);
+          if (confirm('파일을 불러오시겠습니까? 현재 보드의 내용이 덮어씌워집니다.')) {
+            currentBoardRef.set(parsed);
           }
-        } catch (err) { alert('올바른 파일이 아닙니다.'); }
+        } catch (err) { alert('올바른 JSON 파일이 아닙니다.'); }
       };
       reader.readAsText(file);
       event.target.value = '';
     }
 
-    function createNewSession() {
-      if (confirm('보드를 새로 만드시겠습니까? 모든 메모가 초기화됩니다.')) {
-        rootRef.set({ topic: '', notes: null }).then(() => {
-          topicInput.value = '';
-        });
+    function clearCurrentNotes() {
+      if (confirm('현재 보드의 모든 메모를 비우시겠습니까? (보드 자체는 유지됩니다)')) {
+        currentBoardRef.child('notes').remove();
       }
     }
 
@@ -752,6 +837,9 @@
         t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)
       );
     }
+
+    // 초기 보드 로드
+    changeBoard('main');
   </script>
 </body>
 </html>
