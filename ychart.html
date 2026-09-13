@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>이음 간담회 실시간 자유배치 Y-Chart</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
+  <!-- html2canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- 웹폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Pretendard:wght@500;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      background-color: #f6f5f0;
+      background-image: radial-gradient(#e5e3d8 1.2px, transparent 1.2px);
+      background-size: 20px 20px;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* 상단 메뉴바 */
+    header {
+      background: #ffffff;
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2dfd2;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+      z-index: 50;
+      gap: 8px;
+    }
+
+    .topic-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      max-width: 320px;
+    }
+
+    .topic-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #1e293b;
+      border: none;
+      background: #f1ede4;
+      padding: 6px 10px;
+      border-radius: 6px;
+      width: 100%;
+      outline: none;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn-tool {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-tool:hover { background: #e2e8f0; }
+    .btn-tool.danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+
+    /* Y차트 전지 캔버스 */
+    #chart-board {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    .y-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* 상단/좌/우 고정 입력 및 라벨 헤더 UI */
+    .zone-hud {
+      position: absolute;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    /* 3개 구역 HUD 위치 재설정 */
+    .hud-continue { top: 18px; left: 50%; transform: translateX(-50%); width: 360px; }
+    .hud-stop { top: 62%; left: 30px; width: 300px; }
+    .hud-start { top: 62%; right: 30px; width: 300px; }
+
+    .input-bar {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      background: rgba(255,255,255,0.95);
+      padding: 4px 6px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .input-bar input {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      border: 1px solid #d1cdb8;
+      border-radius: 4px;
+      outline: none;
+      min-width: 0; /* flex 컨테이너 축소 방지 */
+    }
+    
+    /* 붙이기 버튼 가로 고정 및 스타일 강화 */
+    .btn-add {
+      background: #334155;
+      color: #fff;
+      border: none;
+      padding: 0 12px;
+      min-width: 68px; /* 글자 줄바꿈 방지 */
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.15s;
+    }
+    .btn-add:hover { background: #1e293b; }
+
+    .zone-title {
+      font-family: 'Nanum Pen Script', cursive;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #334155;
+      line-height: 1;
+      margin-top: 6px;
+      text-shadow: 1px 1px 0px rgba(255,255,255,0.85);
+      pointer-events: none;
+    }
+
+    /* 1/4 미니 포스트잇 */
+    .mini-note {
+      position: absolute;
+      width: 66px;
+      height: 66px;
+      background: #ffb8c6;
+      box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.15);
+      padding: 5px 4px 3px 4px;
+      border-radius: 2px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: grab;
+      z-index: 10;
+      transition: box-shadow 0.15s ease, transform 0.15s ease;
+      touch-action: none;
+    }
+
+    .mini-note:hover {
+      box-shadow: 2px 6px 12px rgba(0, 0, 0, 0.22);
+      z-index: 30;
+    }
+
+    .mini-note::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 6px;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .mini-text {
+      font-family: 'Nanum Pen Script', cursive;
+      font-size: 0.95rem;
+      line-height: 1.15;
+      color: #1e293b;
+      word-break: break-all;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      pointer-events: none;
+    }
+
+    .mini-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      pointer-events: none;
+    }
+    .mini-likes {
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: #475569;
+      background: rgba(255,255,255,0.6);
+      padding: 1px 4px;
+      border-radius: 8px;
+    }
+
+    .mini-note.dragging {
+      cursor: grabbing;
+      opacity: 0.92;
+      transform: scale(1.18) !important;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+      z-index: 99 !important;
+    }
+
+    .mini-note.long-pressed {
+      transform: scale(1.22) !important;
+      box-shadow: 0 0 0 2px #3b82f6, 0 12px 24px rgba(0,0,0,0.3);
+      z-index: 99 !important;
+    }
+
+    /* 상세 팝업 모달 */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.show { display: flex; }
+
+    .detail-card {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+      background: #ffb8c6;
+      border-radius: 4px;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.25);
+      padding: 20px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: popIn 0.2s ease-out;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-text {
+      font-family: 'Nanum Pen Script', cursive;
+      font-size: 1.6rem;
+      line-height: 1.35;
+      color: #1e293b;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px dashed rgba(0,0,0,0.15);
+      padding-top: 10px;
+    }
+
+    .modal-btn-like {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #1e293b;
+      cursor: pointer;
+    }
+    .modal-btn-like:active { transform: scale(0.94); }
+
+    .modal-btn-del {
+      background: transparent;
+      border: none;
+      color: #dc2626;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .modal-btn-close {
+      position: absolute;
+      top: 6px; right: 10px;
+      background: none; border: none;
+      font-size: 1.4rem; color: #475569;
+      cursor: pointer;
+    }
+
+    /* 하단 가이드 바 */
+    .guide-bar {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(4px);
+      padding: 4px 14px;
+      border-radius: 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      pointer-events: none;
+      z-index: 40;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+      .hud-continue { width: 92%; top: 8px; }
+      .hud-stop { width: 46%; left: 8px; top: 58%; }
+      .hud-start { width: 46%; right: 8px; top: 58%; }
+      .zone-title { font-size: 1.8rem; }
+      .mini-note { width: 60px; height: 60px; }
+      .btn-add { min-width: 58px; padding: 0 8px; font-size: 0.8rem; }
+      .guide-bar { font-size: 0.68rem; padding: 3px 10px; width: 92%; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="topic-box">
+      <span>📝</span>
+      <input type="text" id="topicInput" class="topic-title" placeholder="간담회 주제" />
+    </div>
+
+    <div class="toolbar">
+      <button class="btn-tool" onclick="exportJPG()">📸 JPG</button>
+      <button class="btn-tool" onclick="downloadJSON()">💾 백업</button>
+      <button class="btn-tool" onclick="triggerFileInput()">📂 열기</button>
+      <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadJSON(event)">
+      <button class="btn-tool danger" onclick="createNewSession()">✨ 비우기</button>
+    </div>
+  </header>
+
+  <main id="chart-board">
+    <!-- 균등한 120도 각도 3분할 매직펜 Y선 -->
+    <svg class="y-svg" xmlns="http://www.w3.org/2000/svg">
+      <!-- 좌상단 대각선: 화면 5% 지점 -> 중앙 (50%, 50%) -->
+      <line x1="5%" y1="0%" x2="50%" y2="50%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
+      <!-- 우상단 대각선: 화면 95% 지점 -> 중앙 (50%, 50%) -->
+      <line x1="95%" y1="0%" x2="50%" y2="50%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
+      <!-- 중앙 수직선: 중앙 (50%, 50%) -> 맨 아래 (50%, 100%) -->
+      <line x1="50%" y1="50%" x2="50%" y2="100%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
+    </svg>
+
+    <!-- 1. 계속 HUD -->
+    <div class="zone-hud hud-continue">
+      <div class="input-bar">
+        <input type="text" id="input-continue" placeholder="[계속] 유지할 점..." onkeydown="handleEnter(event, 'continue')">
+        <button class="btn-add" onclick="addItem('continue')">붙이기</button>
+      </div>
+      <div class="zone-title">계속</div>
+    </div>
+
+    <!-- 2. 멈춤 HUD -->
+    <div class="zone-hud hud-stop">
+      <div class="input-bar">
+        <input type="text" id="input-stop" placeholder="[멈춤] 개선할 점..." onkeydown="handleEnter(event, 'stop')">
+        <button class="btn-add" onclick="addItem('stop')">붙이기</button>
+      </div>
+      <div class="zone-title">멈춤</div>
+    </div>
+
+    <!-- 3. 도전 HUD -->
+    <div class="zone-hud hud-start">
+      <div class="input-bar">
+        <input type="text" id="input-start" placeholder="[도전] 시도할 점..." onkeydown="handleEnter(event, 'start')">
+        <button class="btn-add" onclick="addItem('start')">붙이기</button>
+      </div>
+      <div class="zone-title">도전</div>
+    </div>
+
+    <!-- 메모 레이어 -->
+    <div id="notes-layer"></div>
+
+    <!-- 가이드 바 -->
+    <div class="guide-bar">
+      💡 모바일: 짧게 터치(내용보기) · 길게 터치(위치이동) | PC: 마우스 드래그
+    </div>
+  </main>
+
+  <!-- 상세 보기 팝업 모달 -->
+  <div class="modal-backdrop" id="detailModal" onclick="closeModal(event)">
+    <div class="detail-card" onclick="event.stopPropagation()">
+      <button class="modal-btn-close" onclick="closeModal()">×</button>
+      <div class="modal-text" id="modalText"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-like" id="modalLikeBtn">👍 따봉 <span id="modalLikesCount">0</span></button>
+        <button class="modal-btn-del" id="modalDelBtn">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAkVV8hw9KoViHvMgdjFifl4GWy5l7iZsY",
+      authDomain: "e-uem-gandamhoi.firebaseapp.com",
+      databaseURL: "https://e-uem-gandamhoi-default-rtdb.firebaseio.com",
+      projectId: "e-uem-gandamhoi",
+      storageBucket: "e-uem-gandamhoi.firebasestorage.app",
+      messagingSenderId: "432155074593",
+      appId: "1:432155074593:web:03b380bf35c39c9c994360",
+      measurementId: "G-K71265B1V5"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const rootRef = db.ref('ychart_session');
+
+    let currentSessionData = { topic: '', notes: {} };
+    const board = document.getElementById('chart-board');
+    const notesLayer = document.getElementById('notes-layer');
+    const topicInput = document.getElementById('topicInput');
+
+    rootRef.on('value', snap => {
+      currentSessionData = snap.val() || { topic: '', notes: {} };
+      if (document.activeElement !== topicInput) {
+        topicInput.value = currentSessionData.topic || '';
+      }
+      renderNotes(currentSessionData.notes);
+    });
+
+    topicInput.addEventListener('input', () => {
+      rootRef.child('topic').set(topicInput.value);
+    });
+
+    // 넓어진 각 구역에 맞춘 스폰 위치 재설정
+    const spawnPositions = {
+      continue: { minX: 30, maxX: 66, minY: 15, maxY: 42 },
+      stop:     { minX: 8,  maxX: 42, minY: 55, maxY: 88 },
+      start:    { minX: 56, maxX: 88, minY: 55, maxY: 88 }
+    };
+
+    function addItem(cat) {
+      const input = document.getElementById(`input-${cat}`);
+      const text = input.value.trim();
+      if (!text) return;
+
+      const spawn = spawnPositions[cat];
+      const x = spawn.minX + Math.random() * (spawn.maxX - spawn.minX);
+      const y = spawn.minY + Math.random() * (spawn.maxY - spawn.minY);
+      const rot = (Math.random() * 6 - 3).toFixed(1);
+
+      rootRef.child('notes').push({
+        category: cat,
+        text: text,
+        x: parseFloat(x.toFixed(1)),
+        y: parseFloat(y.toFixed(1)),
+        rot: rot,
+        likes: 0,
+        createdAt: Date.now()
+      });
+
+      input.value = '';
+      input.focus();
+    }
+
+    function handleEnter(e, cat) {
+      if (e.key === 'Enter') addItem(cat);
+    }
+
+    function renderNotes(notes) {
+      const currentCards = Array.from(notesLayer.children);
+      const existingKeys = new Set(notes ? Object.keys(notes) : []);
+
+      currentCards.forEach(card => {
+        if (!existingKeys.has(card.dataset.key)) card.remove();
+      });
+
+      if (!notes) return;
+
+      Object.keys(notes).forEach(key => {
+        const item = notes[key];
+        let el = document.querySelector(`.mini-note[data-key="${key}"]`);
+
+        if (!el) {
+          el = document.createElement('div');
+          el.className = 'mini-note';
+          el.dataset.key = key;
+          initInteractions(el);
+          notesLayer.appendChild(el);
+        }
+
+        if (!el.classList.contains('dragging')) {
+          el.style.left = `${item.x}%`;
+          el.style.top = `${item.y}%`;
+          el.style.setProperty('--rot', `${item.rot || 0}deg`);
+          el.style.transform = `rotate(${item.rot || 0}deg)`;
+        }
+
+        el.innerHTML = `
+          <div class="mini-text">${escapeHtml(item.text)}</div>
+          <div class="mini-footer">
+            <span class="mini-likes">👍 ${item.likes || 0}</span>
+          </div>
+        `;
+      });
+    }
+
+    function initInteractions(el) {
+      let isDragging = false;
+      let startX, startY, origX, origY;
+      let longPressTimer = null;
+      let isLongPressed = false;
+      let hasMoved = false;
+
+      el.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        startDrag(e.clientX, e.clientY);
+
+        function onMouseMove(moveEvent) {
+          moveDrag(moveEvent.clientX, moveEvent.clientY);
+        }
+        function onMouseUp() {
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+          endDrag();
+        }
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+      });
+
+      el.addEventListener('touchstart', e => {
+        const touch = e.touches[0];
+        hasMoved = false;
+        isLongPressed = false;
+        startX = touch.clientX;
+        startY = touch.clientY;
+
+        longPressTimer = setTimeout(() => {
+          isLongPressed = true;
+          el.classList.add('long-pressed');
+          if (navigator.vibrate) navigator.vibrate(40);
+          startDrag(startX, startY);
+        }, 350);
+      }, { passive: true });
+
+      el.addEventListener('touchmove', e => {
+        const touch = e.touches[0];
+        const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
+
+        if (dist > 8 && !isLongPressed) {
+          clearTimeout(longPressTimer);
+        }
+
+        if (isLongPressed && isDragging) {
+          e.preventDefault();
+          moveDrag(touch.clientX, touch.clientY);
+        }
+      }, { passive: false });
+
+      el.addEventListener('touchend', e => {
+        clearTimeout(longPressTimer);
+        el.classList.remove('long-pressed');
+
+        if (isDragging) {
+          endDrag();
+        } else if (!hasMoved && !isLongPressed) {
+          openDetailModal(el.dataset.key);
+        }
+      });
+
+      function startDrag(clientX, clientY) {
+        isDragging = true;
+        hasMoved = false;
+        el.classList.add('dragging');
+
+        const rect = el.getBoundingClientRect();
+        const parentRect = board.getBoundingClientRect();
+
+        origX = ((rect.left - parentRect.left) / parentRect.width) * 100;
+        origY = ((rect.top - parentRect.top) / parentRect.height) * 100;
+
+        startX = clientX;
+        startY = clientY;
+      }
+
+      function moveDrag(clientX, clientY) {
+        if (!isDragging) return;
+        hasMoved = true;
+        const parentRect = board.getBoundingClientRect();
+
+        const dx = ((clientX - startX) / parentRect.width) * 100;
+        const dy = ((clientY - startY) / parentRect.height) * 100;
+
+        let newX = Math.max(0, Math.min(94, origX + dx));
+        let newY = Math.max(0, Math.min(92, origY + dy));
+
+        el.style.left = `${newX}%`;
+        el.style.top = `${newY}%`;
+      }
+
+      function endDrag() {
+        if (!isDragging) return;
+        isDragging = false;
+        el.classList.remove('dragging');
+
+        if (hasMoved) {
+          const finalX = parseFloat(el.style.left);
+          const finalY = parseFloat(el.style.top);
+          rootRef.child(`notes/${el.dataset.key}`).update({
+            x: finalX,
+            y: finalY
+          });
+        }
+      }
+
+      el.addEventListener('click', () => {
+        if (!hasMoved) openDetailModal(el.dataset.key);
+      });
+    }
+
+    let activeModalKey = null;
+
+    function openDetailModal(key) {
+      activeModalKey = key;
+      const note = currentSessionData.notes ? currentSessionData.notes[key] : null;
+      if (!note) return;
+
+      document.getElementById('modalText').innerText = note.text;
+      document.getElementById('modalLikesCount').innerText = note.likes || 0;
+
+      const likeBtn = document.getElementById('modalLikeBtn');
+      likeBtn.onclick = () => {
+        rootRef.child(`notes/${key}/likes`).transaction(l => (l || 0) + 1).then(res => {
+          document.getElementById('modalLikesCount').innerText = res.snapshot.val();
+        });
+      };
+
+      const delBtn = document.getElementById('modalDelBtn');
+      delBtn.onclick = () => {
+        if (confirm('이 메모를 삭제하시겠습니까?')) {
+          rootRef.child(`notes/${key}`).remove();
+          closeModal();
+        }
+      };
+
+      document.getElementById('detailModal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').classList.remove('show');
+      activeModalKey = null;
+    }
+
+    async function exportJPG() {
+      const huds = document.querySelectorAll('.zone-hud');
+      const guide = document.querySelector('.guide-bar');
+      huds.forEach(el => el.style.visibility = 'hidden');
+      guide.style.visibility = 'hidden';
+
+      try {
+        const canvas = await html2canvas(board, {
+          backgroundColor: '#f6f5f0',
+          scale: 2,
+          useCORS: true
+        });
+
+        const image = canvas.toDataURL('image/jpeg', 0.95);
+        const link = document.createElement('a');
+        const topicName = topicInput.value.trim() || '간담회_Y차트';
+        link.download = `${topicName}_${new Date().toISOString().slice(0,10)}.jpg`;
+        link.href = image;
+        link.click();
+      } catch (err) {
+        alert('이미지 저장 오류: ' + err.message);
+      } finally {
+        huds.forEach(el => el.style.visibility = 'visible');
+        guide.style.visibility = 'visible';
+      }
+    }
+
+    function downloadJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentSessionData, null, 2));
+      const a = document.createElement('a');
+      const topicName = topicInput.value.trim() || '간담회_Y차트';
+      a.setAttribute("href", dataStr);
+      a.setAttribute("download", `${topicName}_백업_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function triggerFileInput() { document.getElementById('fileInput').click(); }
+
+    function loadJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (confirm('파일을 불러오시겠습니까? 현재 보드가 대체됩니다.')) {
+            rootRef.set(parsed);
+          }
+        } catch (err) { alert('올바른 파일이 아닙니다.'); }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function createNewSession() {
+      if (confirm('보드를 새로 만드시겠습니까? 모든 메모가 초기화됩니다.')) {
+        rootRef.set({ topic: '', notes: null }).then(() => {
+          topicInput.value = '';
+        });
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, 
+        t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)
+      );
+    }
+  </script>
+</body>
+</html>
