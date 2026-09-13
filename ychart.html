@@ -15,7 +15,7 @@
   <!-- 웹폰트 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Pretendard:wght@500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Pretendard:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -49,7 +49,6 @@
       flex-wrap: wrap;
     }
 
-    /* 보드 선택 및 관리 컨트롤 */
     .board-select-group {
       display: flex;
       align-items: center;
@@ -68,7 +67,6 @@
       cursor: pointer;
       max-width: 180px;
     }
-    .board-select:focus { border-color: #475569; }
 
     .topic-box {
       display: flex;
@@ -109,8 +107,9 @@
       white-space: nowrap;
     }
     .btn-tool:hover { background: #e2e8f0; }
+    .btn-tool.pdf-btn { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+    .btn-tool.pdf-btn:hover { background: #c7d2fe; }
     .btn-tool.primary { background: #334155; color: #ffffff; border-color: #334155; }
-    .btn-tool.primary:hover { background: #1e293b; }
     .btn-tool.danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
 
     /* Y차트 전지 캔버스 */
@@ -357,6 +356,122 @@
       white-space: nowrap;
     }
 
+    /* ====================================================
+       PDF 보고서용 A4 인쇄 서식
+       ==================================================== */
+    #print-report {
+      display: none;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      body {
+        background: #ffffff !important;
+        overflow: visible !important;
+        height: auto !important;
+      }
+      #print-report, #print-report * {
+        visibility: visible;
+      }
+      #print-report {
+        display: block !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 24px 30px;
+        color: #1e293b;
+        background: #ffffff;
+      }
+
+      .report-header {
+        border-bottom: 2px solid #0f172a;
+        padding-bottom: 14px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+      }
+      .report-title {
+        font-size: 24pt;
+        font-weight: 800;
+        color: #0f172a;
+      }
+      .report-date {
+        font-size: 10pt;
+        color: #64748b;
+      }
+
+      .report-snapshot {
+        text-align: center;
+        margin-bottom: 24px;
+        page-break-inside: avoid;
+      }
+      .report-snapshot img {
+        max-width: 100%;
+        max-height: 380px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+      }
+
+      .report-section {
+        margin-bottom: 22px;
+        page-break-inside: avoid;
+      }
+      .report-section-title {
+        font-size: 13pt;
+        font-weight: 800;
+        padding: 6px 12px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .sec-continue { background-color: #ecfdf5; color: #065f46; border-left: 5px solid #10b981; }
+      .sec-stop     { background-color: #fef2f2; color: #991b1b; border-left: 5px solid #ef4444; }
+      .sec-start    { background-color: #eff6ff; color: #1e40af; border-left: 5px solid #3b82f6; }
+
+      .report-list {
+        list-style: none;
+        padding-left: 6px;
+      }
+      .report-item {
+        font-size: 11pt;
+        line-height: 1.6;
+        padding: 6px 10px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .report-item:nth-child(even) {
+        background-color: #f8fafc;
+      }
+      .report-text {
+        flex: 1;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .report-badge {
+        font-size: 9pt;
+        font-weight: bold;
+        color: #475569;
+        background: #e2e8f0;
+        padding: 2px 8px;
+        border-radius: 12px;
+        margin-left: 12px;
+        white-space: nowrap;
+      }
+      .empty-notice {
+        font-size: 10pt;
+        color: #94a3b8;
+        padding: 8px 12px;
+        font-style: italic;
+      }
+    }
+
     @media (max-width: 768px) {
       .hud-continue { width: 92%; top: 8px; }
       .hud-stop { width: 46%; left: 8px; top: 58%; }
@@ -371,7 +486,6 @@
 <body>
 
   <header>
-    <!-- 보드 목록 선택 박스 -->
     <div class="board-select-group">
       <select id="boardSelect" class="board-select" onchange="changeBoard(this.value)">
         <option value="main">기본 보드</option>
@@ -380,14 +494,13 @@
       <button class="btn-tool danger" onclick="deleteCurrentBoard()" title="현재 보드 삭제">🗑️</button>
     </div>
 
-    <!-- 현재 보드 주제명 -->
     <div class="topic-box">
       <span>📝</span>
       <input type="text" id="topicInput" class="topic-title" placeholder="현재 보드 주제" />
     </div>
 
-    <!-- 도구 모음 -->
     <div class="toolbar">
+      <button class="btn-tool pdf-btn" onclick="generatePDFReport()">📄 PDF 보고서</button>
       <button class="btn-tool" onclick="exportJPG()">📸 JPG</button>
       <button class="btn-tool" onclick="downloadJSON()">💾 백업</button>
       <button class="btn-tool" onclick="triggerFileInput()">📂 열기</button>
@@ -397,14 +510,12 @@
   </header>
 
   <main id="chart-board">
-    <!-- 균등 120도 분할선 -->
     <svg class="y-svg" xmlns="http://www.w3.org/2000/svg">
       <line x1="5%" y1="0%" x2="50%" y2="50%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
       <line x1="95%" y1="0%" x2="50%" y2="50%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
       <line x1="50%" y1="50%" x2="50%" y2="100%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
     </svg>
 
-    <!-- 1. 계속 -->
     <div class="zone-hud hud-continue">
       <div class="input-bar">
         <input type="text" id="input-continue" placeholder="[계속] 유지할 점..." onkeydown="handleEnter(event, 'continue')">
@@ -413,7 +524,6 @@
       <div class="zone-title">계속</div>
     </div>
 
-    <!-- 2. 멈춤 -->
     <div class="zone-hud hud-stop">
       <div class="input-bar">
         <input type="text" id="input-stop" placeholder="[멈춤] 개선할 점..." onkeydown="handleEnter(event, 'stop')">
@@ -422,7 +532,6 @@
       <div class="zone-title">멈춤</div>
     </div>
 
-    <!-- 3. 도전 -->
     <div class="zone-hud hud-start">
       <div class="input-bar">
         <input type="text" id="input-start" placeholder="[도전] 시도할 점..." onkeydown="handleEnter(event, 'start')">
@@ -450,6 +559,44 @@
     </div>
   </div>
 
+  <!-- PDF 인쇄용 A4 전용 템플릿 영역 -->
+  <div id="print-report">
+    <div class="report-header">
+      <h1 class="report-title" id="reportTitle">이음 간담회 Y-Chart 회고록</h1>
+      <span class="report-date" id="reportDate"></span>
+    </div>
+
+    <!-- 전체 조감도 캡처 이미지 -->
+    <div class="report-snapshot" id="reportSnapshotArea"></div>
+
+    <!-- 1. 계속 목록 -->
+    <div class="report-section">
+      <div class="report-section-title sec-continue">
+        <span>🌿 계속 (Continue) — 지속 및 강화할 점</span>
+        <span id="count-continue">0건</span>
+      </div>
+      <ul class="report-list" id="report-list-continue"></ul>
+    </div>
+
+    <!-- 2. 멈춤 목록 -->
+    <div class="report-section">
+      <div class="report-section-title sec-stop">
+        <span>🛑 멈춤 (Stop) — 중단 및 개선할 점</span>
+        <span id="count-stop">0건</span>
+      </div>
+      <ul class="report-list" id="report-list-stop"></ul>
+    </div>
+
+    <!-- 3. 도전 목록 -->
+    <div class="report-section">
+      <div class="report-section-title sec-start">
+        <span>🚀 도전 (Start / Try) — 새롭게 시도할 점</span>
+        <span id="count-start">0건</span>
+      </div>
+      <ul class="report-list" id="report-list-start"></ul>
+    </div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyAkVV8hw9KoViHvMgdjFifl4GWy5l7iZsY",
@@ -465,7 +612,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 루트 레퍼런스
     const boardsListRef = db.ref('board_metadata');
     let currentBoardId = 'main';
     let currentBoardRef = db.ref(`ychart_sessions/${currentBoardId}`);
@@ -476,13 +622,11 @@
     const board = document.getElementById('chart-board');
     const notesLayer = document.getElementById('notes-layer');
 
-    // 1. 보드 메타데이터(목록) 실시간 구독
     boardsListRef.on('value', snap => {
       const list = snap.val();
       boardSelect.innerHTML = '';
 
       if (!list || Object.keys(list).length === 0) {
-        // 기본 보드 자동 등록
         boardsListRef.child('main').set({ title: '기본 보드', createdAt: Date.now() });
         return;
       }
@@ -495,19 +639,16 @@
         boardSelect.appendChild(opt);
       });
 
-      // 만약 보고 있던 보드가 삭제되었다면 첫 번째 보드로 전환
       if (!list[currentBoardId]) {
         changeBoard(Object.keys(list)[0]);
       }
     });
 
-    // 2. 현재 보드 변경 및 데이터 연결
     function changeBoard(newBoardId) {
       if (!newBoardId) return;
       currentBoardId = newBoardId;
       boardSelect.value = newBoardId;
 
-      // 이전 리스너 해제 후 새 경로 바인딩
       currentBoardRef.off();
       currentBoardRef = db.ref(`ychart_sessions/${currentBoardId}`);
 
@@ -520,40 +661,28 @@
       });
     }
 
-    // 3. 새 보드 생성
     function promptCreateBoard() {
       const title = prompt('새로운 보드(분임/안건) 이름을 입력하세요:', '2분임 회고');
       if (!title || !title.trim()) return;
 
       const newId = 'board_' + Date.now();
-      boardsListRef.child(newId).set({
-        title: title.trim(),
-        createdAt: Date.now()
-      });
-
-      db.ref(`ychart_sessions/${newId}`).set({
-        topic: title.trim(),
-        notes: null
-      }).then(() => {
+      boardsListRef.child(newId).set({ title: title.trim(), createdAt: Date.now() });
+      db.ref(`ychart_sessions/${newId}`).set({ topic: title.trim(), notes: null }).then(() => {
         changeBoard(newId);
       });
     }
 
-    // 4. 현재 보드 삭제
     function deleteCurrentBoard() {
-      const options = boardSelect.options;
-      if (options.length <= 1) {
+      if (boardSelect.options.length <= 1) {
         alert('최소 1개의 보드는 유지되어야 합니다.');
         return;
       }
-
-      if (confirm(`'${boardSelect.options[boardSelect.selectedIndex].text}' 보드를 정말 삭제하시겠습니까?`)) {
+      if (confirm(`'${boardSelect.options[boardSelect.selectedIndex].text}' 보드를 삭제하시겠습니까?`)) {
         boardsListRef.child(currentBoardId).remove();
         db.ref(`ychart_sessions/${currentBoardId}`).remove();
       }
     }
 
-    // 5. 주제 수정 시 보드 메타 제목과 동시 동기화
     topicInput.addEventListener('input', () => {
       const val = topicInput.value;
       currentBoardRef.child('topic').set(val);
@@ -562,7 +691,6 @@
       }
     });
 
-    // 위치 스폰 영역
     const spawnPositions = {
       continue: { minX: 30, maxX: 66, minY: 15, maxY: 42 },
       stop:     { minX: 8,  maxX: 42, minY: 55, maxY: 88 },
@@ -645,7 +773,6 @@
       el.addEventListener('mousedown', e => {
         if (e.button !== 0) return;
         startDrag(e.clientX, e.clientY);
-
         function onMouseMove(moveEvent) { moveDrag(moveEvent.clientX, moveEvent.clientY); }
         function onMouseUp() {
           window.removeEventListener('mousemove', onMouseMove);
@@ -770,6 +897,73 @@
       document.getElementById('detailModal').classList.remove('show');
     }
 
+    /* ====================================================
+       신규: PDF 보고서 생성 (A4 서식 + 전체 캡처 + 항목별 텍스트)
+       ==================================================== */
+    async function generatePDFReport() {
+      const topicName = topicInput.value.trim() || '간담회 회고';
+      document.getElementById('reportTitle').innerText = topicName;
+      document.getElementById('reportDate').innerText = `출력일시: ${new Date().toLocaleString('ko-KR')}`;
+
+      // 1. 전체 조감도 캡처 (선택적 표시)
+      const huds = document.querySelectorAll('.zone-hud');
+      const guide = document.querySelector('.guide-bar');
+      huds.forEach(el => el.style.visibility = 'hidden');
+      guide.style.visibility = 'hidden';
+
+      try {
+        const canvas = await html2canvas(board, {
+          backgroundColor: '#f6f5f0',
+          scale: 1.5,
+          useCORS: true
+        });
+        const snapshotArea = document.getElementById('reportSnapshotArea');
+        snapshotArea.innerHTML = `<img src="${canvas.toDataURL('image/jpeg', 0.85)}" alt="전체 Y차트 조감도" />`;
+      } catch (e) {
+        console.error('캡처 생성 실패', e);
+      } finally {
+        huds.forEach(el => el.style.visibility = 'visible');
+        guide.style.visibility = 'visible';
+      }
+
+      // 2. 계속, 멈춤, 도전 데이터 분류 및 좋아요 순 정렬
+      const categories = { continue: [], stop: [], start: [] };
+      const notes = currentSessionData.notes || {};
+
+      Object.keys(notes).forEach(k => {
+        const item = notes[k];
+        if (categories[item.category]) {
+          categories[item.category].push(item);
+        }
+      });
+
+      ['continue', 'stop', 'start'].forEach(cat => {
+        const listEl = document.getElementById(`report-list-${cat}`);
+        const countEl = document.getElementById(`count-${cat}`);
+        listEl.innerHTML = '';
+
+        const arr = categories[cat].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        countEl.innerText = `${arr.length}건`;
+
+        if (arr.length === 0) {
+          listEl.innerHTML = `<li class="empty-notice">- 등록된 내용이 없습니다.</li>`;
+        } else {
+          arr.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'report-item';
+            li.innerHTML = `
+              <span class="report-text">• ${escapeHtml(item.text)}</span>
+              <span class="report-badge">👍 ${item.likes || 0}</span>
+            `;
+            listEl.appendChild(li);
+          });
+        }
+      });
+
+      // 브라우저 인쇄 대화상자 호출 (대상: 'PDF로 저장' 선택 가능)
+      window.print();
+    }
+
     async function exportJPG() {
       const huds = document.querySelectorAll('.zone-hud');
       const guide = document.querySelector('.guide-bar');
@@ -782,7 +976,6 @@
           scale: 2,
           useCORS: true
         });
-
         const image = canvas.toDataURL('image/jpeg', 0.95);
         const link = document.createElement('a');
         const topicName = topicInput.value.trim() || '간담회_보드';
@@ -838,7 +1031,6 @@
       );
     }
 
-    // 초기 보드 로드
     changeBoard('main');
   </script>
 </body>
