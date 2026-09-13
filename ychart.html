@@ -356,9 +356,7 @@
       white-space: nowrap;
     }
 
-    /* ====================================================
-       PDF 보고서용 A4 인쇄 서식
-       ==================================================== */
+    /* PDF 보고서 서식 */
     #print-report {
       display: none;
     }
@@ -559,17 +557,15 @@
     </div>
   </div>
 
-  <!-- PDF 인쇄용 A4 전용 템플릿 영역 -->
+  <!-- PDF 인쇄용 A4 전용 템플릿 -->
   <div id="print-report">
     <div class="report-header">
       <h1 class="report-title" id="reportTitle">이음 간담회 Y-Chart 회고록</h1>
       <span class="report-date" id="reportDate"></span>
     </div>
 
-    <!-- 전체 조감도 캡처 이미지 -->
     <div class="report-snapshot" id="reportSnapshotArea"></div>
 
-    <!-- 1. 계속 목록 -->
     <div class="report-section">
       <div class="report-section-title sec-continue">
         <span>🌿 계속 (Continue) — 지속 및 강화할 점</span>
@@ -578,7 +574,6 @@
       <ul class="report-list" id="report-list-continue"></ul>
     </div>
 
-    <!-- 2. 멈춤 목록 -->
     <div class="report-section">
       <div class="report-section-title sec-stop">
         <span>🛑 멈춤 (Stop) — 중단 및 개선할 점</span>
@@ -587,7 +582,6 @@
       <ul class="report-list" id="report-list-stop"></ul>
     </div>
 
-    <!-- 3. 도전 목록 -->
     <div class="report-section">
       <div class="report-section-title sec-start">
         <span>🚀 도전 (Start / Try) — 새롭게 시도할 점</span>
@@ -763,32 +757,22 @@
       });
     }
 
+    // 모바일 터치 및 PC 드래그 제스처
     function initInteractions(el) {
       let isDragging = false;
-      let startX, startY, origX, origY;
+      let startX = 0, startY = 0;
+      let origX = 0, origY = 0;
       let longPressTimer = null;
       let isLongPressed = false;
-      let hasMoved = false;
+      let touchMoved = false;
 
-      el.addEventListener('mousedown', e => {
-        if (e.button !== 0) return;
-        startDrag(e.clientX, e.clientY);
-        function onMouseMove(moveEvent) { moveDrag(moveEvent.clientX, moveEvent.clientY); }
-        function onMouseUp() {
-          window.removeEventListener('mousemove', onMouseMove);
-          window.removeEventListener('mouseup', onMouseUp);
-          endDrag();
-        }
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-      });
-
+      // 1. 모바일 터치 이벤트
       el.addEventListener('touchstart', e => {
         const touch = e.touches[0];
-        hasMoved = false;
-        isLongPressed = false;
         startX = touch.clientX;
         startY = touch.clientY;
+        touchMoved = false;
+        isLongPressed = false;
 
         longPressTimer = setTimeout(() => {
           isLongPressed = true;
@@ -802,27 +786,56 @@
         const touch = e.touches[0];
         const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
 
-        if (dist > 8 && !isLongPressed) clearTimeout(longPressTimer);
+        if (dist > 10 && !isLongPressed) {
+          clearTimeout(longPressTimer);
+          touchMoved = true;
+        }
 
         if (isLongPressed && isDragging) {
-          e.preventDefault();
+          if (e.cancelable) e.preventDefault();
           moveDrag(touch.clientX, touch.clientY);
         }
       }, { passive: false });
 
-      el.addEventListener('touchend', () => {
+      el.addEventListener('touchend', e => {
         clearTimeout(longPressTimer);
         el.classList.remove('long-pressed');
+
         if (isDragging) {
           endDrag();
-        } else if (!hasMoved && !isLongPressed) {
+        } else if (!touchMoved && !isLongPressed) {
+          if (e.cancelable) e.preventDefault();
           openDetailModal(el.dataset.key);
         }
       });
 
+      // 2. PC 마우스 이벤트
+      el.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        let mouseMoved = false;
+        startDrag(e.clientX, e.clientY);
+
+        function onMouseMove(moveEvent) {
+          const dist = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+          if (dist > 5) mouseMoved = true;
+          moveDrag(moveEvent.clientX, moveEvent.clientY);
+        }
+
+        function onMouseUp() {
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+          endDrag();
+          if (!mouseMoved) {
+            openDetailModal(el.dataset.key);
+          }
+        }
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+      });
+
       function startDrag(clientX, clientY) {
         isDragging = true;
-        hasMoved = false;
         el.classList.add('dragging');
 
         const rect = el.getBoundingClientRect();
@@ -837,7 +850,6 @@
 
       function moveDrag(clientX, clientY) {
         if (!isDragging) return;
-        hasMoved = true;
         const parentRect = board.getBoundingClientRect();
 
         const dx = ((clientX - startX) / parentRect.width) * 100;
@@ -855,17 +867,15 @@
         isDragging = false;
         el.classList.remove('dragging');
 
-        if (hasMoved) {
+        const finalX = parseFloat(el.style.left);
+        const finalY = parseFloat(el.style.top);
+        if (!isNaN(finalX) && !isNaN(finalY)) {
           currentBoardRef.child(`notes/${el.dataset.key}`).update({
-            x: parseFloat(el.style.left),
-            y: parseFloat(el.style.top)
+            x: finalX,
+            y: finalY
           });
         }
       }
-
-      el.addEventListener('click', () => {
-        if (!hasMoved) openDetailModal(el.dataset.key);
-      });
     }
 
     function openDetailModal(key) {
@@ -897,15 +907,12 @@
       document.getElementById('detailModal').classList.remove('show');
     }
 
-    /* ====================================================
-       신규: PDF 보고서 생성 (A4 서식 + 전체 캡처 + 항목별 텍스트)
-       ==================================================== */
+    // PDF 보고서 생성
     async function generatePDFReport() {
       const topicName = topicInput.value.trim() || '간담회 회고';
       document.getElementById('reportTitle').innerText = topicName;
       document.getElementById('reportDate').innerText = `출력일시: ${new Date().toLocaleString('ko-KR')}`;
 
-      // 1. 전체 조감도 캡처 (선택적 표시)
       const huds = document.querySelectorAll('.zone-hud');
       const guide = document.querySelector('.guide-bar');
       huds.forEach(el => el.style.visibility = 'hidden');
@@ -926,7 +933,6 @@
         guide.style.visibility = 'visible';
       }
 
-      // 2. 계속, 멈춤, 도전 데이터 분류 및 좋아요 순 정렬
       const categories = { continue: [], stop: [], start: [] };
       const notes = currentSessionData.notes || {};
 
@@ -960,7 +966,6 @@
         }
       });
 
-      // 브라우저 인쇄 대화상자 호출 (대상: 'PDF로 저장' 선택 가능)
       window.print();
     }
 
