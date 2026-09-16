@@ -140,31 +140,12 @@
       font-weight: bold;
       color: #475569;
     }
-
-    #trash-can {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 52px;
-      height: 52px;
-      background: rgba(255, 255, 255, 0.9);
-      border: 2px dashed #ef4444;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      pointer-events: none;
-      z-index: 10;
-    }
   </style>
 </head>
 <body>
 
 <div id="app-container">
-  <div id="stage-parent">
-    <div id="trash-can">🗑️</div>
-  </div>
+  <div id="stage-parent"></div>
 
   <div id="bottom-panel">
     <div id="control-tabs">
@@ -188,7 +169,6 @@
 <script>
   const container = document.getElementById('stage-parent');
   
-  // 캔버스 크기 취득 (0 방지용 폴백 포함)
   function getStageDimensions() {
     return {
       width: container.clientWidth || window.innerWidth,
@@ -203,14 +183,14 @@
     height: initialDim.height,
   });
 
-  // 배경 레이어와 소품 레이어 (순서 엄격 분리)
-  const bgLayer = new Konva.Layer({ listening: false }); // 배경은 터치 이벤트 무시(성능 향상)
+  const bgLayer = new Konva.Layer({ listening: true }); // 빈 바닥 클릭 감지 위해 listening 켬
   const furnitureLayer = new Konva.Layer();
   
   stage.add(bgLayer);
   stage.add(furnitureLayer);
 
-  // 테마 색상 정의
+  let selectedItemGroup = null; // 현재 선택된 소품
+
   const roomThemes = {
     warm: { wall: '#FFF2D6', floor: '#D4A373', skirting: '#A66A38', windowSky: '#90E0EF' },
     cozy: { wall: '#E8F3EE', floor: '#B7B7A4', skirting: '#6B705C', windowSky: '#CAF0F8' },
@@ -219,7 +199,6 @@
   };
   let currentTheme = 'warm';
 
-  // 소품 데이터
   const itemsData = {
     room: [
       { icon: '🪵', label: '나무방', action: () => setRoomTheme('warm') },
@@ -251,74 +230,48 @@
     ]
   };
 
-  // 벽, 바닥, 걸레받이, 창문 확실하게 렌더링
+  // 선택 해제 처리
+  function deselectAll() {
+    if (selectedItemGroup) {
+      const delBtn = selectedItemGroup.findOne('.delete-btn');
+      if (delBtn) delBtn.visible(false);
+      selectedItemGroup = null;
+      furnitureLayer.batchDraw();
+    }
+  }
+
+  // 빈 배경 터치 시 선택 해제
+  bgLayer.on('tap click', () => {
+    deselectAll();
+  });
+
   function renderRoomBackground() {
     bgLayer.destroyChildren();
 
     const w = stage.width();
     const h = stage.height();
     const theme = roomThemes[currentTheme];
-    
     const wallH = h * 0.65;
     const floorH = h * 0.35;
 
-    // 1. 벽면
-    bgLayer.add(new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: w,
-      height: wallH,
-      fill: theme.wall,
-    }));
+    // 벽면 & 바닥
+    bgLayer.add(new Konva.Rect({ x: 0, y: 0, width: w, height: wallH, fill: theme.wall }));
+    bgLayer.add(new Konva.Rect({ x: 0, y: wallH, width: w, height: floorH, fill: theme.floor }));
+    bgLayer.add(new Konva.Rect({ x: 0, y: wallH - 10, width: w, height: 10, fill: theme.skirting }));
 
-    // 2. 바닥면
-    bgLayer.add(new Konva.Rect({
-      x: 0,
-      y: wallH,
-      width: w,
-      height: floorH,
-      fill: theme.floor,
-    }));
-
-    // 3. 걸레받이 몰딩
-    bgLayer.add(new Konva.Rect({
-      x: 0,
-      y: wallH - 10,
-      width: w,
-      height: 10,
-      fill: theme.skirting,
-    }));
-
-    // 4. 창문 (크기 반응형 계산)
+    // 창문
     const winW = Math.min(w * 0.28, 130);
     const winH = winW * 0.85;
     const winX = w * 0.65;
     const winY = h * 0.12;
 
     bgLayer.add(new Konva.Rect({
-      x: winX,
-      y: winY,
-      width: winW,
-      height: winH,
-      fill: theme.windowSky,
-      stroke: '#ffffff',
-      strokeWidth: 6,
-      cornerRadius: 12,
-      shadowColor: 'rgba(0,0,0,0.15)',
-      shadowBlur: 8,
+      x: winX, y: winY, width: winW, height: winH,
+      fill: theme.windowSky, stroke: '#ffffff', strokeWidth: 6, cornerRadius: 12,
+      shadowColor: 'rgba(0,0,0,0.15)', shadowBlur: 8,
     }));
-
-    // 창살 십자선
-    bgLayer.add(new Konva.Line({
-      points: [winX + winW / 2, winY, winX + winW / 2, winY + winH],
-      stroke: '#ffffff',
-      strokeWidth: 4,
-    }));
-    bgLayer.add(new Konva.Line({
-      points: [winX, winY + winH / 2, winX + winW, winY + winH / 2],
-      stroke: '#ffffff',
-      strokeWidth: 4,
-    }));
+    bgLayer.add(new Konva.Line({ points: [winX + winW / 2, winY, winX + winW / 2, winY + winH], stroke: '#ffffff', strokeWidth: 4 }));
+    bgLayer.add(new Konva.Line({ points: [winX, winY + winH / 2, winX + winW, winY + winH / 2], stroke: '#ffffff', strokeWidth: 4 }));
 
     bgLayer.draw();
   }
@@ -328,8 +281,10 @@
     renderRoomBackground();
   }
 
-  // 가구 배치
+  // 소품 생성
   function spawnItem(emoji, baseSize, ratioX = 0.5, ratioY = 0.55) {
+    deselectAll();
+
     const w = stage.width();
     const h = stage.height();
     const scaleFactor = Math.min(w, h) / 400;
@@ -344,34 +299,93 @@
 
     itemGroup.setAttr('itemData', { emoji, baseSize });
 
+    // 소품 이모지 텍스트
     const textNode = new Konva.Text({
       text: emoji,
       fontSize: size,
       align: 'center',
     });
-
     itemGroup.add(textNode);
-    furnitureLayer.add(itemGroup);
 
-    itemGroup.on('dragstart touchstart', function () {
-      this.moveToTop();
-      this.scale({ x: 1.2, y: 1.2 });
-      furnitureLayer.batchDraw();
+    // 개별 삭제 버튼 그룹 (머리 위에 빨간 동그라미 X)
+    const btnSize = Math.max(size * 0.45, 26);
+    const delGroup = new Konva.Group({
+      x: size * 0.6,
+      y: -btnSize * 0.4,
+      name: 'delete-btn',
+      visible: true, // 생성 시 일단 보여줌
     });
 
-    itemGroup.on('dragend touchend', function () {
-      this.scale({ x: 1.0, y: 1.0 });
-      const pos = this.absolutePosition();
-      if (pos.x > stage.width() - 80 && pos.y < 80) {
-        this.destroy();
+    const delBg = new Konva.Circle({
+      radius: btnSize / 2,
+      fill: '#ef4444',
+      stroke: '#ffffff',
+      strokeWidth: 2,
+      shadowColor: 'black',
+      shadowBlur: 4,
+      shadowOpacity: 0.3,
+    });
+
+    const delText = new Konva.Text({
+      text: '✕',
+      fontSize: btnSize * 0.6,
+      fill: 'white',
+      fontStyle: 'bold',
+      x: -btnSize * 0.2,
+      y: -btnSize * 0.3,
+    });
+
+    delGroup.add(delBg);
+    delGroup.add(delText);
+    itemGroup.add(delGroup);
+
+    // 삭제 버튼 터치 시: 펑 터지며 삭제
+    delGroup.on('pointerdown tap click', (e) => {
+      e.cancelBubble = true; // 그룹 전체 드래그로 번지는 것 방지
+      // 약간 작아지는 트윈 효과 후 삭제
+      new Konva.Tween({
+        node: itemGroup,
+        duration: 0.1,
+        scaleX: 0.1,
+        scaleY: 0.1,
+        opacity: 0,
+        onFinish: () => {
+          itemGroup.destroy();
+          selectedItemGroup = null;
+          furnitureLayer.batchDraw();
+        }
+      }).play();
+    });
+
+    // 소품 터치 및 드래그 반응
+    itemGroup.on('pointerdown tap', (e) => {
+      e.cancelBubble = true;
+      if (selectedItemGroup !== itemGroup) {
+        deselectAll();
+        selectedItemGroup = itemGroup;
+        delGroup.visible(true);
+        itemGroup.moveToTop();
+        furnitureLayer.batchDraw();
       }
+    });
+
+    itemGroup.on('dragstart', function () {
+      this.moveToTop();
+      this.scale({ x: 1.15, y: 1.15 });
       furnitureLayer.batchDraw();
     });
 
+    itemGroup.on('dragend', function () {
+      this.scale({ x: 1.0, y: 1.0 });
+      furnitureLayer.batchDraw();
+    });
+
+    selectedItemGroup = itemGroup;
+    furnitureLayer.add(itemGroup);
     furnitureLayer.draw();
   }
 
-  // 리사이즈 시 배경 재도색 및 소품 위치 유지
+  // 화면 회전 / 리사이즈 시 비율 재계산
   window.addEventListener('resize', () => {
     const prevW = stage.width();
     const prevH = stage.height();
@@ -421,7 +435,9 @@
     });
   }
 
+  // 저장 (삭제 버튼은 상태 저장에서 자동 제외)
   function saveRoom() {
+    deselectAll();
     const items = [];
     const w = stage.width();
     const h = stage.height();
@@ -438,13 +454,13 @@
       }
     });
 
-    localStorage.setItem('room_save_v2', JSON.stringify({ theme: currentTheme, items }));
+    localStorage.setItem('room_save_v3', JSON.stringify({ theme: currentTheme, items }));
     alert('방이 깔끔하게 저장되었습니다! 💾');
   }
 
   function loadRoom() {
-    const raw = localStorage.getItem('room_save_v2');
-    if (!raw) return alert('저장된 집이 없습니다.');
+    const raw = localStorage.getItem('room_save_v3');
+    if (!raw) return alert('저장된 방이 없습니다.');
 
     const data = JSON.parse(raw);
     setRoomTheme(data.theme);
@@ -453,32 +469,31 @@
     data.items.forEach(it => {
       spawnItem(it.emoji, it.baseSize, it.ratioX, it.ratioY);
     });
+    deselectAll();
     alert('방을 불러왔습니다! 🏡');
   }
 
+  // 사진 저장 시 빨간 X 버튼 숨기고 캡처
   function exportPhoto() {
-    const trash = document.getElementById('trash-can');
-    trash.style.display = 'none';
-
+    deselectAll();
     setTimeout(() => {
       const dataURL = stage.toDataURL({ pixelRatio: 2 });
-      trash.style.display = 'flex';
-
       const a = document.createElement('a');
-      a.download = `내방꾸미기_${Date.now()}.png`;
+      a.download = `내가꾸민방_${Date.now()}.png`;
       a.href = dataURL;
       a.click();
     }, 40);
   }
 
   function resetRoom() {
-    if (confirm('방 안의 물건을 싹 치울까요?')) {
+    if (confirm('방 안의 모든 물건을 싹 치울까요?')) {
+      deselectAll();
       furnitureLayer.destroyChildren();
       furnitureLayer.draw();
     }
   }
 
-  // 시작 시 방 풍경 렌더링 및 첫 탭 활성화
+  // 시작
   renderRoomBackground();
   switchCategory('room');
 </script>
