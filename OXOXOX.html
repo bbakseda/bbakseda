@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>이음 실시간 O/X 안건 토론판</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- 웹폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Pretendard:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      background-color: #f6f5f0;
+      background-image: radial-gradient(#e5e3d8 1.2px, transparent 1.2px);
+      background-size: 20px 20px;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* 상단 메뉴바 (동일 유지) */
+    header {
+      background: #ffffff;
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2dfd2;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+      z-index: 50;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .board-select {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #1e293b;
+      padding: 5px 8px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      outline: none;
+      cursor: pointer;
+      max-width: 150px;
+    }
+
+    .my-team-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+    }
+    .my-team-label {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #475569;
+    }
+    .select-global-team {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #1e293b;
+      padding: 3px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: #ffffff;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .topic-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 160px;
+      max-width: 280px;
+    }
+
+    .topic-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #1e293b;
+      border: none;
+      background: #f1ede4;
+      padding: 6px 10px;
+      border-radius: 6px;
+      width: 100%;
+      outline: none;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn-tool {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-tool:hover { background: #e2e8f0; }
+    .btn-tool.pdf-btn { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+    .btn-tool.primary { background: #334155; color: #ffffff; border-color: #334155; }
+    .btn-tool.danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+
+    /* 메인 50:50 2열 레이아웃 */
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 좌측 50%: O / X 투표 공간 */
+    .ox-panel {
+      width: 50%;
+      height: 100%;
+      border-right: 2px dashed #d1cdb8;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .ox-header {
+      text-align: center;
+    }
+    .ox-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #1e293b;
+    }
+    .ox-sub {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .ox-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      align-items: center;
+      flex: 1;
+      margin: 16px 0;
+    }
+
+    .btn-vote {
+      flex: 1;
+      max-width: 220px;
+      height: 240px;
+      border-radius: 16px;
+      border: 3px solid transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-vote:active { transform: scale(0.96); }
+
+    .btn-vote-o {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #2563eb;
+    }
+    .btn-vote-o.selected {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 0 0 4px #bfdbfe, 0 12px 24px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-vote-x {
+      background: #fef2f2;
+      border-color: #fca5a5;
+      color: #dc2626;
+    }
+    .btn-vote-x.selected {
+      background: #dc2626;
+      color: #ffffff;
+      box-shadow: 0 0 0 4px #fecaca, 0 12px 24px rgba(220, 38, 38, 0.35);
+    }
+
+    .vote-symbol {
+      font-size: 5rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .vote-count {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-top: 8px;
+    }
+    .vote-percent {
+      font-size: 0.95rem;
+      font-weight: 700;
+      opacity: 0.85;
+    }
+
+    /* 하단 실시간 비율 바 차트 */
+    .bar-chart-container {
+      width: 100%;
+      height: 24px;
+      background: #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+    }
+    .bar-o {
+      background: #2563eb;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+    .bar-x {
+      background: #dc2626;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    /* 우측 50%: 의견 게시판 */
+    .opinions-panel {
+      width: 50%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      background: #f6f5f0;
+    }
+
+    .op-input-bar {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      background: rgba(255,255,255,0.96);
+      padding: 6px 8px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .op-input-text {
+      flex: 1;
+      padding: 7px 10px;
+      font-size: 0.88rem;
+      border: 1px solid #d1cdb8;
+      border-radius: 4px;
+      outline: none;
+    }
+    .op-input-pwd {
+      width: 60px;
+      padding: 7px 4px;
+      font-size: 0.8rem;
+      border: 1px solid #d1cdb8;
+      border-radius: 4px;
+      outline: none;
+      text-align: center;
+    }
+    .btn-op-add {
+      background: #334155;
+      color: #fff;
+      border: none;
+      padding: 0 14px;
+      height: 34px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .opinions-container {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 12px;
+      padding: 4px;
+    }
+
+    /* 포스트잇 카드 */
+    .op-card {
+      width: calc(50% - 6px);
+      min-height: 105px;
+      padding: 10px 12px 8px;
+      border-radius: 4px;
+      box-shadow: 1px 3px 6px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      animation: pop 0.15s ease-out;
+    }
+    @keyframes pop {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .op-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .op-team-tag {
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.6);
+    }
+
+    .op-card-text {
+      font-family: 'Nanum Pen Script', cursive;
+      font-size: 1.35rem;
+      line-height: 1.25;
+      color: #1e293b;
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+
+    .op-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(0,0,0,0.1);
+    }
+
+    .btn-op-like {
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      padding: 2px 7px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      color: #334155;
+      cursor: pointer;
+    }
+    .op-sub-btns {
+      display: flex;
+      gap: 4px;
+    }
+    .btn-op-action {
+      background: none;
+      border: none;
+      font-size: 0.75rem;
+      color: #64748b;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .btn-op-action.del:hover { color: #dc2626; }
+
+    /* 모바일 반응형: 상하 분할 */
+    @media (max-width: 768px) {
+      main { flex-direction: column; overflow-y: auto; }
+      .ox-panel { width: 100%; height: auto; min-height: 280px; border-right: none; border-bottom: 2px dashed #d1cdb8; padding: 14px; }
+      .btn-vote { height: 140px; }
+      .vote-symbol { font-size: 3rem; }
+      .vote-count { font-size: 1.5rem; }
+      .opinions-panel { width: 100%; height: auto; min-height: 400px; padding: 12px; }
+      .op-card { width: 100%; }
+    }
+
+    /* PDF 인쇄 서식 */
+    #print-report { display: none; }
+    @media print {
+      body * { visibility: hidden; }
+      #print-report, #print-report * { visibility: visible; }
+      #print-report {
+        display: block !important;
+        position: absolute;
+        top: 0; left: 0; width: 100%;
+        padding: 24px;
+        background: #ffffff;
+      }
+      .report-header { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 16px; }
+      .report-title { font-size: 20pt; font-weight: 800; }
+      .report-stats {
+        display: flex; gap: 20px; font-size: 14pt; font-weight: bold; margin-bottom: 20px; padding: 12px;
+        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+      }
+      .report-list { list-style: none; }
+      .report-item { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 11pt; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <select id="boardSelect" class="board-select" onchange="changeBoard(this.value)">
+        <option value="main">기본 안건</option>
+      </select>
+      <button class="btn-tool primary" onclick="promptCreateBoard()">+ 새 안건</button>
+      <button class="btn-tool danger" onclick="deleteCurrentBoard()">🗑️</button>
+
+      <div class="my-team-group">
+        <span class="my-team-label">모둠:</span>
+        <select id="globalTeamSelect" class="select-global-team" onchange="changeGlobalTeam(this.value)">
+          <option value="1">1모둠</option>
+          <option value="2">2모둠</option>
+          <option value="3">3모둠</option>
+          <option value="4">4모둠</option>
+          <option value="5">5모둠</option>
+          <option value="6">6모둠</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="topic-box">
+      <span>⚖️</span>
+      <input type="text" id="topicInput" class="topic-title" placeholder="안건 주제를 입력하세요" />
+    </div>
+
+    <div class="toolbar">
+      <button class="btn-tool pdf-btn" onclick="generatePDFReport()">📄 PDF 보고서</button>
+      <button class="btn-tool" onclick="downloadJSON()">💾 백업</button>
+      <button class="btn-tool" onclick="triggerFileInput()">📂 열기</button>
+      <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadJSON(event)">
+      <button class="btn-tool danger" onclick="clearCurrentSession()">🧹 초기화</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 좌측 50%: O / X 투표 -->
+    <section class="ox-panel">
+      <div class="ox-header">
+        <div class="ox-title">실시간 찬반 투표</div>
+        <div class="ox-sub">원하는 선택지를 클릭하세요 (1인 1표, 실시간 변경 가능)</div>
+      </div>
+
+      <div class="ox-buttons">
+        <!-- O 버튼 -->
+        <button class="btn-vote btn-vote-o" id="btnVoteO" onclick="castVote('O')">
+          <span class="vote-symbol">O</span>
+          <span class="vote-count" id="countO">0표</span>
+          <span class="vote-percent" id="percentO">0%</span>
+        </button>
+
+        <!-- X 버튼 -->
+        <button class="btn-vote btn-vote-x" id="btnVoteX" onclick="castVote('X')">
+          <span class="vote-symbol">X</span>
+          <span class="vote-count" id="countX">0표</span>
+          <span class="vote-percent" id="percentX">0%</span>
+        </button>
+      </div>
+
+      <!-- 하단 실시간 비율 게이지 바 -->
+      <div>
+        <div class="bar-chart-container">
+          <div class="bar-o" id="barO" style="width: 50%;"></div>
+          <div class="bar-x" id="barX" style="width: 50%;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.8rem; font-weight:700;">
+          <span style="color:#2563eb;">O (찬성/긍정)</span>
+          <span id="totalVotes">총 0명 참여</span>
+          <span style="color:#dc2626;">X (반대/부정)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 우측 50%: 의견 나눔판 -->
+    <section class="opinions-panel">
+      <div class="op-input-bar">
+        <input type="text" id="opinionInput" class="op-input-text" placeholder="이 안건에 대한 의견을 작성하세요..." onkeydown="if(event.key==='Enter') addOpinion()">
+        <input type="password" id="opinionPwd" class="op-input-pwd" placeholder="비번" maxlength="8">
+        <button class="btn-op-add" onclick="addOpinion()">등록</button>
+      </div>
+
+      <div class="opinions-container" id="opinionsContainer"></div>
+    </section>
+  </main>
+
+  <!-- PDF 인쇄용 A4 서식 -->
+  <div id="print-report">
+    <div class="report-header">
+      <h1 class="report-title" id="reportTitle">안건 토론 결과 보고서</h1>
+      <div style="font-size:10pt; color:#64748b; margin-top:4px;" id="reportDate"></div>
+    </div>
+
+    <div class="report-stats">
+      <span style="color:#2563eb;" id="reportStatsO">O: 0표 (0%)</span>
+      <span style="color:#dc2626;" id="reportStatsX">X: 0표 (0%)</span>
+      <span id="reportStatsTotal">총 참여: 0명</span>
+    </div>
+
+    <h3 style="font-size:13pt; margin-bottom:10px;">📋 구성원 등록 의견</h3>
+    <ul class="report-list" id="reportOpinionList"></ul>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = "5652";
+
+    const TEAM_COLORS = {
+      "1": { bg: "#ffb8c6", tag: "1모둠", text: "#881337" },
+      "2": { bg: "#fef08a", tag: "2모둠", text: "#713f12" },
+      "3": { bg: "#bbf7d0", tag: "3모둠", text: "#14532d" },
+      "4": { bg: "#bfdbfe", tag: "4모둠", text: "#1e3a8a" },
+      "5": { bg: "#e9d5ff", tag: "5모둠", text: "#581c87" },
+      "6": { bg: "#fed7aa", tag: "6모둠", text: "#7c2d12" }
+    };
+
+    // 로컬 클라이언트 고유 식별자 (1인 1표 보장용)
+    let myClientId = localStorage.getItem('ox_client_id');
+    if (!myClientId) {
+      myClientId = 'user_' + Math.random().toString(36).substr(2, 9) + Date.now();
+      localStorage.setItem('ox_client_id', myClientId);
+    }
+
+    let currentGlobalTeam = localStorage.getItem('ychart_my_team') || "1";
+
+    // Firebase 연동 정보
+    const firebaseConfig = {
+      apiKey: "AIzaSyAkVV8hw9KoViHvMgdjFifl4GWy5l7iZsY",
+      authDomain: "e-uem-gandamhoi.firebaseapp.com",
+      databaseURL: "https://e-uem-gandamhoi-default-rtdb.firebaseio.com",
+      projectId: "e-uem-gandamhoi",
+      storageBucket: "e-uem-gandamhoi.firebasestorage.app",
+      messagingSenderId: "432155074593",
+      appId: "1:432155074593:web:03b380bf35c39c9c994360",
+      measurementId: "G-K71265B1V5"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 독립된 안건/토론 저장 경로
+    const oxMetadataRef = db.ref('ox_metadata');
+    let currentBoardId = 'main';
+    let currentBoardRef = db.ref(`ox_sessions/${currentBoardId}`);
+    let currentSessionData = { topic: '', votes: {}, opinions: {} };
+
+    const boardSelect = document.getElementById('boardSelect');
+    const globalTeamSelect = document.getElementById('globalTeamSelect');
+    const topicInput = document.getElementById('topicInput');
+
+    globalTeamSelect.value = currentGlobalTeam;
+    function changeGlobalTeam(val) {
+      currentGlobalTeam = val;
+      localStorage.setItem('ychart_my_team', val);
+    }
+
+    // 보드 목록 실시간 감지
+    oxMetadataRef.on('value', snap => {
+      const list = snap.val();
+      boardSelect.innerHTML = '';
+
+      if (!list || Object.keys(list).length === 0) {
+        oxMetadataRef.child('main').set({ title: '기본 안건', createdAt: Date.now() });
+        return;
+      }
+
+      Object.keys(list).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = list[id].title || id;
+        if (id === currentBoardId) opt.selected = true;
+        boardSelect.appendChild(opt);
+      });
+
+      if (!list[currentBoardId]) {
+        changeBoard(Object.keys(list)[0]);
+      }
+    });
+
+    function changeBoard(newBoardId) {
+      if (!newBoardId) return;
+      currentBoardId = newBoardId;
+      boardSelect.value = newBoardId;
+
+      currentBoardRef.off();
+      currentBoardRef = db.ref(`ox_sessions/${currentBoardId}`);
+
+      currentBoardRef.on('value', snap => {
+        currentSessionData = snap.val() || { topic: '', votes: {}, opinions: {} };
+        if (document.activeElement !== topicInput) {
+          topicInput.value = currentSessionData.topic || '';
+        }
+        renderVotes(currentSessionData.votes);
+        renderOpinions(currentSessionData.opinions);
+      });
+    }
+
+    function promptCreateBoard() {
+      const title = prompt('새로운 안건(토론 주제) 이름을 입력하세요:', '스마트폰 소지 허용 건');
+      if (!title || !title.trim()) return;
+
+      const newId = 'ox_' + Date.now();
+      oxMetadataRef.child(newId).set({ title: title.trim(), createdAt: Date.now() });
+      db.ref(`ox_sessions/${newId}`).set({ topic: title.trim(), votes: null, opinions: null }).then(() => {
+        changeBoard(newId);
+      });
+    }
+
+    function deleteCurrentBoard() {
+      if (boardSelect.options.length <= 1) {
+        alert('최소 1개의 안건은 유지되어야 합니다.');
+        return;
+      }
+
+      const pwd = prompt('안건을 삭제하려면 관리자 비밀번호를 입력하세요:');
+      if (pwd === ADMIN_PASSWORD) {
+        oxMetadataRef.child(currentBoardId).remove();
+        db.ref(`ox_sessions/${currentBoardId}`).remove();
+        alert('안건이 삭제되었습니다.');
+      } else if (pwd !== null) {
+        alert('관리자 비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    function clearCurrentSession() {
+      const pwd = prompt('현재 안건의 투표와 의견을 모두 초기화하려면 관리자 비밀번호를 입력하세요:');
+      if (pwd === ADMIN_PASSWORD) {
+        currentBoardRef.child('votes').remove();
+        currentBoardRef.child('opinions').remove();
+        alert('초기화되었습니다.');
+      } else if (pwd !== null) {
+        alert('관리자 비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    topicInput.addEventListener('input', () => {
+      const val = topicInput.value;
+      currentBoardRef.child('topic').set(val);
+      if (val.trim()) {
+        oxMetadataRef.child(currentBoardId).update({ title: val.trim() });
+      }
+    });
+
+    /* --- O / X 투표 로직 --- */
+    function castVote(choice) {
+      const myVoteRef = currentBoardRef.child(`votes/${myClientId}`);
+      myVoteRef.once('value', snap => {
+        const prev = snap.val();
+        if (prev === choice) {
+          // 이미 누른 것 한 번 더 누르면 취소
+          myVoteRef.remove();
+        } else {
+          myVoteRef.set(choice);
+        }
+      });
+    }
+
+    function renderVotes(votes) {
+      let countO = 0;
+      let countX = 0;
+      let myChoice = null;
+
+      if (votes) {
+        Object.keys(votes).forEach(uid => {
+          if (votes[uid] === 'O') countO++;
+          if (votes[uid] === 'X') countX++;
+        });
+        myChoice = votes[myClientId] || null;
+      }
+
+      const total = countO + countX;
+      const pctO = total === 0 ? 0 : Math.round((countO / total) * 100);
+      const pctX = total === 0 ? 0 : 100 - pctO;
+
+      document.getElementById('countO').innerText = `${countO}표`;
+      document.getElementById('percentO').innerText = `${pctO}%`;
+      document.getElementById('countX').innerText = `${countX}표`;
+      document.getElementById('percentX').innerText = `${pctX}%`;
+
+      document.getElementById('totalVotes').innerText = `총 ${total}명 참여`;
+
+      const barO = document.getElementById('barO');
+      const barX = document.getElementById('barX');
+      if (total === 0) {
+        barO.style.width = '50%';
+        barX.style.width = '50%';
+      } else {
+        barO.style.width = `${pctO}%`;
+        barX.style.width = `${pctX}%`;
+      }
+
+      // 내 선택 시각화
+      const btnO = document.getElementById('btnVoteO');
+      const btnX = document.getElementById('btnVoteX');
+      btnO.classList.toggle('selected', myChoice === 'O');
+      btnX.classList.toggle('selected', myChoice === 'X');
+    }
+
+    /* --- 의견 나눔판 로직 --- */
+    function addOpinion() {
+      const input = document.getElementById('opinionInput');
+      const pwdInput = document.getElementById('opinionPwd');
+      const text = input.value.trim();
+      if (!text) return;
+
+      currentBoardRef.child('opinions').push({
+        team: currentGlobalTeam || "1",
+        text: text,
+        pwd: pwdInput.value.trim(),
+        likes: 0,
+        createdAt: Date.now()
+      });
+
+      input.value = '';
+      pwdInput.value = '';
+      input.focus();
+    }
+
+    function renderOpinions(opinions) {
+      const container = document.getElementById('opinionsContainer');
+      container.innerHTML = '';
+      if (!opinions) return;
+
+      Object.keys(opinions).forEach(key => {
+        const item = opinions[key];
+        const teamInfo = TEAM_COLORS[item.team] || TEAM_COLORS["1"];
+
+        const card = document.createElement('div');
+        card.className = 'op-card';
+        card.style.backgroundColor = teamInfo.bg;
+        card.innerHTML = `
+          <div>
+            <div class="op-card-header">
+              <span class="op-team-tag" style="color:${teamInfo.text};">${teamInfo.tag}</span>
+            </div>
+            <div class="op-card-text">${escapeHtml(item.text)}</div>
+          </div>
+          <div class="op-card-footer">
+            <button class="btn-op-like" onclick="likeOpinion('${key}')">👍 ${item.likes || 0}</button>
+            <div class="op-sub-btns">
+              <button class="btn-op-action" onclick="editOpinion('${key}')">수정</button>
+              <button class="btn-op-action del" onclick="deleteOpinion('${key}')">삭제</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function likeOpinion(key) {
+      currentBoardRef.child(`opinions/${key}/likes`).transaction(l => (l || 0) + 1);
+    }
+
+    function editOpinion(key) {
+      const item = currentSessionData.opinions[key];
+      if (!item) return;
+
+      const inputPwd = prompt('작성 시 입력한 비밀번호(또는 관리자 비밀번호)를 입력하세요:');
+      if (inputPwd === null) return;
+
+      if ((item.pwd && inputPwd === item.pwd) || inputPwd === ADMIN_PASSWORD || (!item.pwd && inputPwd === ADMIN_PASSWORD)) {
+        const newText = prompt('수정할 내용을 입력하세요:', item.text);
+        if (newText && newText.trim()) {
+          currentBoardRef.child(`opinions/${key}`).update({ text: newText.trim() });
+        }
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    function deleteOpinion(key) {
+      const item = currentSessionData.opinions[key];
+      if (!item) return;
+
+      const inputPwd = prompt('삭제하려면 비밀번호(또는 관리자 비밀번호)를 입력하세요:');
+      if (inputPwd === null) return;
+
+      if ((item.pwd && inputPwd === item.pwd) || inputPwd === ADMIN_PASSWORD || (!item.pwd && inputPwd === ADMIN_PASSWORD)) {
+        currentBoardRef.child(`opinions/${key}`).remove();
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    /* --- PDF 보고서 및 데이터 관리 --- */
+    function generatePDFReport() {
+      const topic = topicInput.value.trim() || '안건 토론';
+      document.getElementById('reportTitle').innerText = `[결과 보고서] ${topic}`;
+      document.getElementById('reportDate').innerText = `작성일시: ${new Date().toLocaleString('ko-KR')}`;
+
+      // 투표 통계 반영
+      const votes = currentSessionData.votes || {};
+      let o = 0, x = 0;
+      Object.keys(votes).forEach(k => {
+        if (votes[k] === 'O') o++;
+        if (votes[k] === 'X') x++;
+      });
+      const tot = o + x;
+      const pO = tot === 0 ? 0 : Math.round((o / tot) * 100);
+      const pX = tot === 0 ? 0 : 100 - pO;
+
+      document.getElementById('reportStatsO').innerText = `O (찬성): ${o}표 (${pO}%)`;
+      document.getElementById('reportStatsX').innerText = `X (반대): ${x}표 (${pX}%)`;
+      document.getElementById('reportStatsTotal').innerText = `총 투표수: ${tot}명`;
+
+      // 의견 리스트 반영
+      const listEl = document.getElementById('reportOpinionList');
+      listEl.innerHTML = '';
+      const opinions = currentSessionData.opinions || {};
+      const arr = Object.values(opinions).sort((a,b) => (b.likes||0) - (a.likes||0));
+
+      if (arr.length === 0) {
+        listEl.innerHTML = `<li>등록된 의견이 없습니다.</li>`;
+      } else {
+        arr.forEach(op => {
+          const li = document.createElement('li');
+          li.className = 'report-item';
+          li.innerHTML = `<strong>[${op.team || 1}모둠]</strong> ${escapeHtml(op.text)} <span style="color:#64748b; font-size:9pt; margin-left:8px;">(👍 ${op.likes||0})</span>`;
+          listEl.appendChild(li);
+        });
+      }
+
+      window.print();
+    }
+
+    function downloadJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentSessionData, null, 2));
+      const a = document.createElement('a');
+      const topicName = topicInput.value.trim() || 'OX토론_백업';
+      a.setAttribute("href", dataStr);
+      a.setAttribute("download", `${topicName}_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function triggerFileInput() { document.getElementById('fileInput').click(); }
+
+    function loadJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (confirm('데이터를 불러오시겠습니까? 현재 안건 데이터가 대체됩니다.')) {
+            currentBoardRef.set(parsed);
+          }
+        } catch (err) { alert('올바른 파일이 아닙니다.'); }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, t => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[t] || t));
+    }
+
+    changeBoard('main');
+  </script>
+</body>
+</html>
