@@ -32,17 +32,17 @@
       -webkit-user-select: none;
     }
 
-    /* 상단 메뉴바 (동일 유지) */
+    /* 상단 메뉴바 */
     header {
       background: #ffffff;
-      padding: 8px 16px;
+      padding: 8px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #e2dfd2;
       box-shadow: 0 2px 5px rgba(0,0,0,0.04);
       z-index: 50;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
 
@@ -54,7 +54,7 @@
     }
 
     .board-select {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 700;
       color: #1e293b;
       padding: 5px 8px;
@@ -63,7 +63,7 @@
       background: #f8fafc;
       outline: none;
       cursor: pointer;
-      max-width: 150px;
+      max-width: 140px;
     }
 
     .my-team-group {
@@ -97,11 +97,11 @@
       align-items: center;
       gap: 6px;
       min-width: 160px;
-      max-width: 280px;
+      max-width: 260px;
     }
 
     .topic-title {
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 800;
       color: #1e293b;
       border: none;
@@ -115,7 +115,8 @@
     .toolbar {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
+      flex-wrap: wrap;
     }
 
     .btn-tool {
@@ -124,7 +125,7 @@
       border: 1px solid #cbd5e1;
       padding: 5px 8px;
       border-radius: 6px;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
@@ -134,7 +135,7 @@
     .btn-tool.primary { background: #334155; color: #ffffff; border-color: #334155; }
     .btn-tool.danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
 
-    /* 메인 50:50 2열 레이아웃 */
+    /* 메인 2열 레이아웃 */
     main {
       flex: 1;
       display: flex;
@@ -142,23 +143,25 @@
       position: relative;
     }
 
-    /* 좌측 50%: O / X 투표 공간 */
+    /* 좌측 투표 패널 */
     .ox-panel {
       width: 50%;
       height: 100%;
       border-right: 2px dashed #d1cdb8;
       display: flex;
       flex-direction: column;
-      padding: 24px;
+      padding: 20px 24px 24px;
       justify-content: space-between;
       background: rgba(255, 255, 255, 0.4);
+      overflow-y: auto;
     }
 
     .ox-header {
       text-align: center;
+      margin-bottom: 8px;
     }
     .ox-title {
-      font-size: 1.2rem;
+      font-size: 1.25rem;
       font-weight: 800;
       color: #1e293b;
     }
@@ -170,17 +173,17 @@
 
     .ox-buttons {
       display: flex;
-      gap: 20px;
+      gap: 18px;
       justify-content: center;
       align-items: center;
       flex: 1;
-      margin: 16px 0;
+      margin: 14px 0;
     }
 
     .btn-vote {
       flex: 1;
       max-width: 220px;
-      height: 240px;
+      min-height: 190px;
       border-radius: 16px;
       border: 3px solid transparent;
       display: flex;
@@ -188,8 +191,9 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
       transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 12px;
     }
     .btn-vote:active { transform: scale(0.96); }
 
@@ -201,7 +205,7 @@
     .btn-vote-o.selected {
       background: #2563eb;
       color: #ffffff;
-      box-shadow: 0 0 0 4px #bfdbfe, 0 12px 24px rgba(37, 99, 235, 0.35);
+      box-shadow: 0 0 0 4px #bfdbfe, 0 10px 20px rgba(37, 99, 235, 0.3);
     }
 
     .btn-vote-x {
@@ -212,26 +216,30 @@
     .btn-vote-x.selected {
       background: #dc2626;
       color: #ffffff;
-      box-shadow: 0 0 0 4px #fecaca, 0 12px 24px rgba(220, 38, 38, 0.35);
+      box-shadow: 0 0 0 4px #fecaca, 0 10px 20px rgba(220, 38, 38, 0.3);
     }
 
     .vote-symbol {
-      font-size: 5rem;
+      font-size: 4.6rem;
       font-weight: 900;
       line-height: 1;
     }
     .vote-count {
-      font-size: 2.2rem;
+      font-size: 2rem;
       font-weight: 800;
-      margin-top: 8px;
+      margin-top: 6px;
     }
     .vote-percent {
       font-size: 0.95rem;
       font-weight: 700;
-      opacity: 0.85;
+      opacity: 0.9;
     }
 
-    /* 하단 실시간 비율 바 차트 */
+    /* 하단 차트 섹션 */
+    .gauge-section {
+      width: 100%;
+      margin-top: 10px;
+    }
     .bar-chart-container {
       width: 100%;
       height: 24px;
@@ -252,7 +260,18 @@
       transition: width 0.3s ease;
     }
 
-    /* 우측 50%: 의견 게시판 */
+    .gauge-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      padding: 0 4px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    /* 우측 의견 패널 */
     .opinions-panel {
       width: 50%;
       height: 100%;
@@ -275,15 +294,16 @@
     }
     .op-input-text {
       flex: 1;
-      padding: 7px 10px;
+      padding: 8px 10px;
       font-size: 0.88rem;
       border: 1px solid #d1cdb8;
       border-radius: 4px;
       outline: none;
+      min-width: 0;
     }
     .op-input-pwd {
-      width: 60px;
-      padding: 7px 4px;
+      width: 58px;
+      padding: 8px 4px;
       font-size: 0.8rem;
       border: 1px solid #d1cdb8;
       border-radius: 4px;
@@ -295,7 +315,7 @@
       color: #fff;
       border: none;
       padding: 0 14px;
-      height: 34px;
+      height: 36px;
       border-radius: 4px;
       font-size: 0.85rem;
       font-weight: 700;
@@ -313,7 +333,6 @@
       padding: 4px;
     }
 
-    /* 포스트잇 카드 */
     .op-card {
       width: calc(50% - 6px);
       min-height: 105px;
@@ -386,15 +405,72 @@
     }
     .btn-op-action.del:hover { color: #dc2626; }
 
-    /* 모바일 반응형: 상하 분할 */
+    /* ====================================================
+       모바일 화면(스마트폰) 최적화: 글자 잘림 방지 및 자연스러운 스크롤
+       ==================================================== */
     @media (max-width: 768px) {
-      main { flex-direction: column; overflow-y: auto; }
-      .ox-panel { width: 100%; height: auto; min-height: 280px; border-right: none; border-bottom: 2px dashed #d1cdb8; padding: 14px; }
-      .btn-vote { height: 140px; }
-      .vote-symbol { font-size: 3rem; }
-      .vote-count { font-size: 1.5rem; }
-      .opinions-panel { width: 100%; height: auto; min-height: 400px; padding: 12px; }
-      .op-card { width: 100%; }
+      body {
+        height: auto;
+        min-height: 100dvh;
+        overflow-y: auto; /* 전체 페이지 자연스러운 스크롤 허용 */
+      }
+      header {
+        position: sticky;
+        top: 0;
+      }
+      main {
+        flex-direction: column;
+        overflow: visible;
+        height: auto;
+      }
+      .ox-panel {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 2px dashed #d1cdb8;
+        padding: 16px 14px 22px; /* 하단 여백 추가로 텍스트 침범 방지 */
+        overflow: visible;
+      }
+      .ox-buttons {
+        margin: 12px 0;
+        gap: 12px;
+      }
+      .btn-vote {
+        min-height: 140px;
+        padding: 10px 6px;
+      }
+      .vote-symbol {
+        font-size: 3.4rem;
+      }
+      .vote-count {
+        font-size: 1.5rem;
+        margin-top: 2px;
+      }
+      .vote-percent {
+        font-size: 0.85rem;
+      }
+      .gauge-section {
+        margin-top: 8px;
+        padding-bottom: 4px; /* 바 아래 텍스트 공간 확보 */
+      }
+      .gauge-labels {
+        font-size: 0.8rem;
+        margin-top: 6px;
+      }
+
+      .opinions-panel {
+        width: 100%;
+        height: auto;
+        min-height: 420px;
+        padding: 16px 14px 40px;
+        overflow: visible;
+      }
+      .opinions-container {
+        overflow: visible;
+      }
+      .op-card {
+        width: 100%; /* 모바일에서는 1열 꽉 차게 */
+      }
     }
 
     /* PDF 인쇄 서식 */
@@ -462,18 +538,16 @@
     <section class="ox-panel">
       <div class="ox-header">
         <div class="ox-title">실시간 찬반 투표</div>
-        <div class="ox-sub">원하는 선택지를 클릭하세요 (1인 1표, 실시간 변경 가능)</div>
+        <div class="ox-sub">원하는 선택지를 터치하세요 (1인 1표, 실시간 변경 가능)</div>
       </div>
 
       <div class="ox-buttons">
-        <!-- O 버튼 -->
         <button class="btn-vote btn-vote-o" id="btnVoteO" onclick="castVote('O')">
           <span class="vote-symbol">O</span>
           <span class="vote-count" id="countO">0표</span>
           <span class="vote-percent" id="percentO">0%</span>
         </button>
 
-        <!-- X 버튼 -->
         <button class="btn-vote btn-vote-x" id="btnVoteX" onclick="castVote('X')">
           <span class="vote-symbol">X</span>
           <span class="vote-count" id="countX">0표</span>
@@ -481,15 +555,15 @@
         </button>
       </div>
 
-      <!-- 하단 실시간 비율 게이지 바 -->
-      <div>
+      <!-- 비율 게이지 바 및 텍스트 레이블 -->
+      <div class="gauge-section">
         <div class="bar-chart-container">
           <div class="bar-o" id="barO" style="width: 50%;"></div>
           <div class="bar-x" id="barX" style="width: 50%;"></div>
         </div>
-        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.8rem; font-weight:700;">
+        <div class="gauge-labels">
           <span style="color:#2563eb;">O (찬성/긍정)</span>
-          <span id="totalVotes">총 0명 참여</span>
+          <span id="totalVotes" style="color:#475569;">총 0명 참여</span>
           <span style="color:#dc2626;">X (반대/부정)</span>
         </div>
       </div>
@@ -536,7 +610,6 @@
       "6": { bg: "#fed7aa", tag: "6모둠", text: "#7c2d12" }
     };
 
-    // 로컬 클라이언트 고유 식별자 (1인 1표 보장용)
     let myClientId = localStorage.getItem('ox_client_id');
     if (!myClientId) {
       myClientId = 'user_' + Math.random().toString(36).substr(2, 9) + Date.now();
@@ -545,7 +618,6 @@
 
     let currentGlobalTeam = localStorage.getItem('ychart_my_team') || "1";
 
-    // Firebase 연동 정보
     const firebaseConfig = {
       apiKey: "AIzaSyAkVV8hw9KoViHvMgdjFifl4GWy5l7iZsY",
       authDomain: "e-uem-gandamhoi.firebaseapp.com",
@@ -560,7 +632,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 독립된 안건/토론 저장 경로
     const oxMetadataRef = db.ref('ox_metadata');
     let currentBoardId = 'main';
     let currentBoardRef = db.ref(`ox_sessions/${currentBoardId}`);
@@ -576,7 +647,6 @@
       localStorage.setItem('ychart_my_team', val);
     }
 
-    // 보드 목록 실시간 감지
     oxMetadataRef.on('value', snap => {
       const list = snap.val();
       boardSelect.innerHTML = '';
@@ -618,7 +688,7 @@
     }
 
     function promptCreateBoard() {
-      const title = prompt('새로운 안건(토론 주제) 이름을 입력하세요:', '스마트폰 소지 허용 건');
+      const title = prompt('새로운 안건 이름을 입력하세요:', '스마트폰 소지 허용 건');
       if (!title || !title.trim()) return;
 
       const newId = 'ox_' + Date.now();
@@ -663,13 +733,11 @@
       }
     });
 
-    /* --- O / X 투표 로직 --- */
     function castVote(choice) {
       const myVoteRef = currentBoardRef.child(`votes/${myClientId}`);
       myVoteRef.once('value', snap => {
         const prev = snap.val();
         if (prev === choice) {
-          // 이미 누른 것 한 번 더 누르면 취소
           myVoteRef.remove();
         } else {
           myVoteRef.set(choice);
@@ -711,14 +779,12 @@
         barX.style.width = `${pctX}%`;
       }
 
-      // 내 선택 시각화
       const btnO = document.getElementById('btnVoteO');
       const btnX = document.getElementById('btnVoteX');
       btnO.classList.toggle('selected', myChoice === 'O');
       btnX.classList.toggle('selected', myChoice === 'X');
     }
 
-    /* --- 의견 나눔판 로직 --- */
     function addOpinion() {
       const input = document.getElementById('opinionInput');
       const pwdInput = document.getElementById('opinionPwd');
@@ -804,13 +870,11 @@
       }
     }
 
-    /* --- PDF 보고서 및 데이터 관리 --- */
     function generatePDFReport() {
       const topic = topicInput.value.trim() || '안건 토론';
       document.getElementById('reportTitle').innerText = `[결과 보고서] ${topic}`;
       document.getElementById('reportDate').innerText = `작성일시: ${new Date().toLocaleString('ko-KR')}`;
 
-      // 투표 통계 반영
       const votes = currentSessionData.votes || {};
       let o = 0, x = 0;
       Object.keys(votes).forEach(k => {
@@ -825,7 +889,6 @@
       document.getElementById('reportStatsX').innerText = `X (반대): ${x}표 (${pX}%)`;
       document.getElementById('reportStatsTotal').innerText = `총 투표수: ${tot}명`;
 
-      // 의견 리스트 반영
       const listEl = document.getElementById('reportOpinionList');
       listEl.innerHTML = '';
       const opinions = currentSessionData.opinions || {};
