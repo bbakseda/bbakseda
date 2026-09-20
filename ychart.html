@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>실시간 다중 보드 Y-Chart</title>
+  <title>이음 간담회 다중 보드 Y-Chart</title>
   
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -44,40 +44,66 @@
       border-bottom: 2px solid #e2dfd2;
       box-shadow: 0 2px 5px rgba(0,0,0,0.04);
       z-index: 50;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
-    .board-select-group {
+    .header-left {
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-wrap: wrap;
     }
 
     .board-select {
       font-size: 0.9rem;
       font-weight: 700;
       color: #1e293b;
-      padding: 6px 10px;
+      padding: 5px 8px;
       border: 1.5px solid #cbd5e1;
       border-radius: 6px;
       background: #f8fafc;
       outline: none;
       cursor: pointer;
-      max-width: 180px;
+      max-width: 150px;
+    }
+
+    .my-team-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+    }
+    .my-team-label {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #475569;
+    }
+    .select-global-team {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #1e293b;
+      padding: 3px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: #ffffff;
+      outline: none;
+      cursor: pointer;
     }
 
     .topic-box {
       display: flex;
       align-items: center;
       gap: 6px;
-      flex: 1;
-      min-width: 180px;
-      max-width: 320px;
+      min-width: 150px;
+      max-width: 260px;
     }
 
     .topic-title {
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 800;
       color: #1e293b;
       border: none;
@@ -139,20 +165,22 @@
       pointer-events: auto;
     }
 
-    .hud-continue { top: 18px; left: 50%; transform: translateX(-50%); width: 360px; }
-    .hud-stop { top: 62%; left: 30px; width: 300px; }
-    .hud-start { top: 62%; right: 30px; width: 300px; }
+    .hud-continue { top: 12px; left: 50%; transform: translateX(-50%); width: 380px; }
+    .hud-stop { top: 60%; left: 24px; width: 310px; }
+    .hud-start { top: 60%; right: 24px; width: 310px; }
 
     .input-bar {
       display: flex;
-      gap: 6px;
+      gap: 5px;
       width: 100%;
-      background: rgba(255,255,255,0.95);
-      padding: 4px 6px;
+      background: rgba(255,255,255,0.96);
+      padding: 5px 6px;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      align-items: center;
     }
-    .input-bar input {
+
+    .input-bar input.input-text {
       flex: 1;
       padding: 6px 10px;
       font-size: 0.85rem;
@@ -162,14 +190,25 @@
       min-width: 0;
     }
 
+    .input-bar input.input-pwd {
+      width: 55px;
+      padding: 6px 4px;
+      font-size: 0.8rem;
+      border: 1px solid #d1cdb8;
+      border-radius: 4px;
+      outline: none;
+      text-align: center;
+    }
+
     .btn-add {
       background: #334155;
       color: #fff;
       border: none;
       padding: 0 12px;
-      min-width: 68px;
+      min-width: 60px;
+      height: 32px;
       border-radius: 4px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
@@ -185,18 +224,17 @@
       font-weight: bold;
       color: #334155;
       line-height: 1;
-      margin-top: 6px;
+      margin-top: 4px;
       text-shadow: 1px 1px 0px rgba(255,255,255,0.85);
       pointer-events: none;
     }
 
     .mini-note {
       position: absolute;
-      width: 66px;
-      height: 66px;
-      background: #ffb8c6;
+      width: 68px;
+      height: 68px;
       box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.15);
-      padding: 5px 4px 3px 4px;
+      padding: 4px 4px 3px 4px;
       border-radius: 2px;
       display: flex;
       flex-direction: column;
@@ -215,8 +253,19 @@
     .mini-note::before {
       content: '';
       position: absolute;
-      top: 0; left: 0; width: 100%; height: 6px;
-      background: rgba(0, 0, 0, 0.04);
+      top: 0; left: 0; width: 100%; height: 5px;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .mini-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.6rem;
+      font-weight: 800;
+      color: rgba(0,0,0,0.55);
+      line-height: 1;
+      pointer-events: none;
     }
 
     .mini-text {
@@ -240,12 +289,12 @@
       pointer-events: none;
     }
     .mini-likes {
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       font-weight: 800;
-      color: #475569;
-      background: rgba(255,255,255,0.6);
-      padding: 1px 4px;
-      border-radius: 8px;
+      color: #334155;
+      background: rgba(255,255,255,0.65);
+      padding: 1px 3px;
+      border-radius: 6px;
     }
 
     .mini-note.dragging {
@@ -278,14 +327,23 @@
     .detail-card {
       position: relative;
       width: 100%;
-      max-width: 320px;
-      background: #ffb8c6;
-      border-radius: 4px;
+      max-width: 340px;
+      background: #ffffff;
+      border-radius: 6px;
       box-shadow: 0 16px 32px rgba(0,0,0,0.25);
       padding: 20px 18px 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
+    }
+
+    .modal-team-tag {
+      font-size: 0.8rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 12px;
+      display: inline-block;
+      align-self: flex-start;
     }
 
     .modal-text {
@@ -295,8 +353,25 @@
       color: #1e293b;
       white-space: pre-wrap;
       word-break: break-word;
-      max-height: 240px;
+      max-height: 220px;
       overflow-y: auto;
+      padding: 4px;
+    }
+
+    .modal-edit-box {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .modal-edit-textarea {
+      font-family: 'Pretendard', sans-serif;
+      font-size: 0.95rem;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      resize: vertical;
+      min-height: 80px;
+      outline: none;
     }
 
     .modal-actions {
@@ -305,25 +380,44 @@
       align-items: center;
       border-top: 1px dashed rgba(0,0,0,0.15);
       padding-top: 10px;
+      gap: 6px;
     }
 
     .modal-btn-like {
       background: #ffffff;
       border: 1px solid #cbd5e1;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 16px;
       font-weight: 800;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: #1e293b;
+      cursor: pointer;
+    }
+
+    .modal-sub-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .modal-btn-edit {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #475569;
       cursor: pointer;
     }
 
     .modal-btn-del {
       background: transparent;
-      border: none;
+      border: 1px solid #fecaca;
       color: #dc2626;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
+      padding: 5px 8px;
+      border-radius: 4px;
       cursor: pointer;
     }
 
@@ -393,6 +487,7 @@
       }
       .report-item:nth-child(even) { background-color: #f8fafc; }
       .report-text { flex: 1; white-space: pre-wrap; word-break: break-word; }
+      .report-team-tag { font-size: 9pt; font-weight: bold; margin-right: 6px; }
       .report-badge {
         font-size: 9pt; font-weight: bold; color: #475569; background: #e2e8f0;
         padding: 2px 8px; border-radius: 12px; margin-left: 12px; white-space: nowrap;
@@ -401,12 +496,13 @@
     }
 
     @media (max-width: 768px) {
-      .hud-continue { width: 92%; top: 8px; }
-      .hud-stop { width: 46%; left: 8px; top: 58%; }
-      .hud-start { width: 46%; right: 8px; top: 58%; }
+      .hud-continue { width: 94%; top: 6px; }
+      .hud-stop { width: 48%; left: 4px; top: 58%; }
+      .hud-start { width: 48%; right: 4px; top: 58%; }
       .zone-title { font-size: 1.8rem; }
-      .mini-note { width: 60px; height: 60px; }
-      .btn-add { min-width: 58px; padding: 0 8px; font-size: 0.8rem; }
+      .mini-note { width: 62px; height: 62px; }
+      .input-bar input.input-pwd { width: 44px; font-size: 0.75rem; padding: 4px 2px; }
+      .btn-add { min-width: 48px; padding: 0 6px; font-size: 0.78rem; }
       .guide-bar { font-size: 0.68rem; width: 92%; text-align: center; }
     }
   </style>
@@ -414,12 +510,24 @@
 <body>
 
   <header>
-    <div class="board-select-group">
+    <div class="header-left">
       <select id="boardSelect" class="board-select" onchange="changeBoard(this.value)">
         <option value="main">기본 보드</option>
       </select>
       <button class="btn-tool primary" onclick="promptCreateBoard()">+ 새 보드</button>
-      <button class="btn-tool danger" onclick="deleteCurrentBoard()" title="현재 보드 삭제">🗑️</button>
+      <button class="btn-tool danger" onclick="deleteCurrentBoard()" title="현재 보드 삭제 (관리자용)">🗑️</button>
+
+      <div class="my-team-group">
+        <span class="my-team-label">모둠:</span>
+        <select id="globalTeamSelect" class="select-global-team" onchange="changeGlobalTeam(this.value)">
+          <option value="1">1모둠</option>
+          <option value="2">2모둠</option>
+          <option value="3">3모둠</option>
+          <option value="4">4모둠</option>
+          <option value="5">5모둠</option>
+          <option value="6">6모둠</option>
+        </select>
+      </div>
     </div>
 
     <div class="topic-box">
@@ -433,7 +541,7 @@
       <button class="btn-tool" onclick="downloadJSON()">💾 백업</button>
       <button class="btn-tool" onclick="triggerFileInput()">📂 열기</button>
       <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="loadJSON(event)">
-      <button class="btn-tool" onclick="clearCurrentNotes()">🧹 메모 비우기</button>
+      <button class="btn-tool danger" onclick="clearCurrentNotes()">🧹 비우기</button>
     </div>
   </header>
 
@@ -444,25 +552,31 @@
       <line x1="50%" y1="50%" x2="50%" y2="100%" stroke="#52525b" stroke-width="3.5" stroke-linecap="round" />
     </svg>
 
+    <!-- 1. 계속 (손글씨: 계속 / 안내문구: 장점: 유지할 점) -->
     <div class="zone-hud hud-continue">
       <div class="input-bar">
-        <input type="text" id="input-continue" placeholder="[계속] 유지할 점..." onkeydown="handleEnter(event, 'continue')">
+        <input type="text" id="input-continue" class="input-text" placeholder="장점: 유지할 점" onkeydown="handleEnter(event, 'continue')">
+        <input type="password" id="pwd-continue" class="input-pwd" placeholder="비번" maxlength="8">
         <button class="btn-add" onclick="addItem('continue')">붙이기</button>
       </div>
       <div class="zone-title">계속</div>
     </div>
 
+    <!-- 2. 멈춤 (손글씨: 멈춤 / 안내문구: 고충: 개선할 점) -->
     <div class="zone-hud hud-stop">
       <div class="input-bar">
-        <input type="text" id="input-stop" placeholder="[멈춤] 개선할 점..." onkeydown="handleEnter(event, 'stop')">
+        <input type="text" id="input-stop" class="input-text" placeholder="고충: 개선할 점" onkeydown="handleEnter(event, 'stop')">
+        <input type="password" id="pwd-stop" class="input-pwd" placeholder="비번" maxlength="8">
         <button class="btn-add" onclick="addItem('stop')">붙이기</button>
       </div>
       <div class="zone-title">멈춤</div>
     </div>
 
+    <!-- 3. 도전 (손글씨: 도전 / 안내문구: 제안: 필요사항) -->
     <div class="zone-hud hud-start">
       <div class="input-bar">
-        <input type="text" id="input-start" placeholder="[도전] 시도할 점..." onkeydown="handleEnter(event, 'start')">
+        <input type="text" id="input-start" class="input-text" placeholder="제안: 필요사항" onkeydown="handleEnter(event, 'start')">
+        <input type="password" id="pwd-start" class="input-pwd" placeholder="비번" maxlength="8">
         <button class="btn-add" onclick="addItem('start')">붙이기</button>
       </div>
       <div class="zone-title">도전</div>
@@ -476,12 +590,27 @@
   </main>
 
   <div class="modal-backdrop" id="detailModal" onclick="closeModal(event)">
-    <div class="detail-card" onclick="event.stopPropagation()">
+    <div class="detail-card" id="modalCard" onclick="event.stopPropagation()">
       <button class="modal-btn-close" onclick="closeModal()">×</button>
+      
+      <span class="modal-team-tag" id="modalTeamTag">1모둠</span>
+      
       <div class="modal-text" id="modalText"></div>
+      
+      <div class="modal-edit-box" id="modalEditBox">
+        <textarea id="modalEditTextarea" class="modal-edit-textarea"></textarea>
+        <div style="display:flex; justify-content: flex-end; gap:6px;">
+          <button class="modal-btn-edit" onclick="cancelEdit()">취소</button>
+          <button class="modal-btn-edit" style="background:#334155; color:#fff;" onclick="saveEdit()">저장</button>
+        </div>
+      </div>
+
       <div class="modal-actions">
         <button class="modal-btn-like" id="modalLikeBtn">👍 따봉 <span id="modalLikesCount">0</span></button>
-        <button class="modal-btn-del" id="modalDelBtn">삭제</button>
+        <div class="modal-sub-actions">
+          <button class="modal-btn-edit" onclick="startEdit()">수정</button>
+          <button class="modal-btn-del" onclick="handleDeleteNote()">삭제</button>
+        </div>
       </div>
     </div>
   </div>
@@ -496,7 +625,7 @@
 
     <div class="report-section">
       <div class="report-section-title sec-continue">
-        <span>🌿 계속 (Continue) — 지속 및 강화할 점</span>
+        <span>🌿 계속 (Continue) — 장점: 유지할 점</span>
         <span id="count-continue">0건</span>
       </div>
       <ul class="report-list" id="report-list-continue"></ul>
@@ -504,7 +633,7 @@
 
     <div class="report-section">
       <div class="report-section-title sec-stop">
-        <span>🛑 멈춤 (Stop) — 중단 및 개선할 점</span>
+        <span>🛑 멈춤 (Stop) — 고충: 개선할 점</span>
         <span id="count-stop">0건</span>
       </div>
       <ul class="report-list" id="report-list-stop"></ul>
@@ -512,7 +641,7 @@
 
     <div class="report-section">
       <div class="report-section-title sec-start">
-        <span>🚀 도전 (Start / Try) — 새롭게 시도할 점</span>
+        <span>🚀 도전 (Start / Try) — 제안: 필요사항</span>
         <span id="count-start">0건</span>
       </div>
       <ul class="report-list" id="report-list-start"></ul>
@@ -520,6 +649,19 @@
   </div>
 
   <script>
+    const ADMIN_PASSWORD = "5652";
+
+    const TEAM_COLORS = {
+      "1": { bg: "#ffb8c6", tag: "1모둠", text: "#881337" },
+      "2": { bg: "#fef08a", tag: "2모둠", text: "#713f12" },
+      "3": { bg: "#bbf7d0", tag: "3모둠", text: "#14532d" },
+      "4": { bg: "#bfdbfe", tag: "4모둠", text: "#1e3a8a" },
+      "5": { bg: "#e9d5ff", tag: "5모둠", text: "#581c87" },
+      "6": { bg: "#fed7aa", tag: "6모둠", text: "#7c2d12" }
+    };
+
+    let currentGlobalTeam = localStorage.getItem('ychart_my_team') || "1";
+
     const firebaseConfig = {
       apiKey: "AIzaSyAkVV8hw9KoViHvMgdjFifl4GWy5l7iZsY",
       authDomain: "e-uem-gandamhoi.firebaseapp.com",
@@ -540,9 +682,16 @@
     let currentSessionData = { topic: '', notes: {} };
 
     const boardSelect = document.getElementById('boardSelect');
+    const globalTeamSelect = document.getElementById('globalTeamSelect');
     const topicInput = document.getElementById('topicInput');
     const board = document.getElementById('chart-board');
     const notesLayer = document.getElementById('notes-layer');
+
+    globalTeamSelect.value = currentGlobalTeam;
+    function changeGlobalTeam(val) {
+      currentGlobalTeam = val;
+      localStorage.setItem('ychart_my_team', val);
+    }
 
     boardsListRef.on('value', snap => {
       const list = snap.val();
@@ -599,9 +748,24 @@
         alert('최소 1개의 보드는 유지되어야 합니다.');
         return;
       }
-      if (confirm(`'${boardSelect.options[boardSelect.selectedIndex].text}' 보드를 삭제하시겠습니까?`)) {
+
+      const pwd = prompt(`'${boardSelect.options[boardSelect.selectedIndex].text}' 보드를 삭제하려면 관리자 비밀번호를 입력하세요:`);
+      if (pwd === ADMIN_PASSWORD) {
         boardsListRef.child(currentBoardId).remove();
         db.ref(`ychart_sessions/${currentBoardId}`).remove();
+        alert('보드가 삭제되었습니다.');
+      } else if (pwd !== null) {
+        alert('관리자 비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    function clearCurrentNotes() {
+      const pwd = prompt('현재 보드의 모든 메모를 비우려면 관리자 비밀번호를 입력하세요:');
+      if (pwd === ADMIN_PASSWORD) {
+        currentBoardRef.child('notes').remove();
+        alert('보드의 모든 메모가 초기화되었습니다.');
+      } else if (pwd !== null) {
+        alert('관리자 비밀번호가 일치하지 않습니다.');
       }
     }
 
@@ -613,25 +777,12 @@
       }
     });
 
-    // 💡 [핵심 알고리즘] 현재 좌표(x%, y%)가 Y선 중 어느 영역에 속하는지 기하학적 판별
     function determineCategoryByPosition(x, y) {
-      // 1. 좌상단 대각선 (5, 0) ~ (50, 50) => y = (50/45)*(x - 5) => y = 1.111*(x - 5)
-      // 2. 우상단 대각선 (95, 0) ~ (50, 50) => y = (-50/45)*(x - 95) => y = -1.111*(x - 95)
-      
       const isAboveLeftDiag = y < (1.111 * (x - 5));
       const isAboveRightDiag = y < (-1.111 * (x - 95));
 
-      // 두 대각선 위쪽 V자 영역에 위치하면 무조건 '계속'
-      if (isAboveLeftDiag && isAboveRightDiag) {
-        return 'continue';
-      }
-
-      // 그렇지 않은 하단 영역: 중앙 수직선(x=50%)을 기준으로 좌우 분할
-      if (x < 50) {
-        return 'stop';   // 하단 좌측: 멈춤
-      } else {
-        return 'start';  // 하단 우측: 도전
-      }
+      if (isAboveLeftDiag && isAboveRightDiag) return 'continue';
+      return (x < 50) ? 'stop' : 'start';
     }
 
     const spawnPositions = {
@@ -642,20 +793,26 @@
 
     function addItem(cat) {
       const input = document.getElementById(`input-${cat}`);
+      const pwdInput = document.getElementById(`pwd-${cat}`);
+
       const text = input.value.trim();
       if (!text) return;
+
+      const team = currentGlobalTeam || "1";
+      const pwd = pwdInput.value.trim();
 
       const spawn = spawnPositions[cat];
       const x = spawn.minX + Math.random() * (spawn.maxX - spawn.minX);
       const y = spawn.minY + Math.random() * (spawn.maxY - spawn.minY);
       const rot = (Math.random() * 6 - 3).toFixed(1);
 
-      // 놓인 위치를 기준으로 카테고리 확정
       const actualCat = determineCategoryByPosition(x, y);
 
       currentBoardRef.child('notes').push({
         category: actualCat,
+        team: team,
         text: text,
+        pwd: pwd,
         x: parseFloat(x.toFixed(1)),
         y: parseFloat(y.toFixed(1)),
         rot: rot,
@@ -664,6 +821,7 @@
       });
 
       input.value = '';
+      pwdInput.value = '';
       input.focus();
     }
 
@@ -684,6 +842,7 @@
       Object.keys(notes).forEach(key => {
         const item = notes[key];
         let el = document.querySelector(`.mini-note[data-key="${key}"]`);
+        const teamInfo = TEAM_COLORS[item.team] || TEAM_COLORS["1"];
 
         if (!el) {
           el = document.createElement('div');
@@ -693,6 +852,8 @@
           notesLayer.appendChild(el);
         }
 
+        el.style.backgroundColor = teamInfo.bg;
+
         if (!el.classList.contains('dragging')) {
           el.style.left = `${item.x}%`;
           el.style.top = `${item.y}%`;
@@ -701,6 +862,9 @@
         }
 
         el.innerHTML = `
+          <div class="mini-header">
+            <span>${teamInfo.tag}</span>
+          </div>
           <div class="mini-text">${escapeHtml(item.text)}</div>
           <div class="mini-footer">
             <span class="mini-likes">👍 ${item.likes || 0}</span>
@@ -717,7 +881,6 @@
       let isLongPressed = false;
       let touchMoved = false;
 
-      // 1. 모바일 터치 이벤트
       el.addEventListener('touchstart', e => {
         const touch = e.touches[0];
         startX = touch.clientX;
@@ -760,7 +923,6 @@
         }
       });
 
-      // 2. PC 마우스 이벤트
       el.addEventListener('mousedown', e => {
         if (e.button !== 0) return;
         let mouseMoved = false;
@@ -822,23 +984,36 @@
         const finalY = parseFloat(el.style.top);
 
         if (!isNaN(finalX) && !isNaN(finalY)) {
-          // 이동 후 놓인 위치의 Y선 경계를 계산하여 새 카테고리 부여
           const newCategory = determineCategoryByPosition(finalX + 3, finalY + 3);
-
           currentBoardRef.child(`notes/${el.dataset.key}`).update({
             x: finalX,
             y: finalY,
-            category: newCategory // 실시간으로 소속 구역 갱신
+            category: newCategory
           });
         }
       }
     }
 
+    let activeModalKey = null;
+
     function openDetailModal(key) {
+      activeModalKey = key;
       const note = currentSessionData.notes ? currentSessionData.notes[key] : null;
       if (!note) return;
 
+      const teamInfo = TEAM_COLORS[note.team] || TEAM_COLORS["1"];
+      const modalCard = document.getElementById('modalCard');
+      modalCard.style.backgroundColor = teamInfo.bg;
+
+      const teamTag = document.getElementById('modalTeamTag');
+      teamTag.innerText = teamInfo.tag;
+      teamTag.style.backgroundColor = "rgba(255,255,255,0.7)";
+      teamTag.style.color = teamInfo.text;
+
       document.getElementById('modalText').innerText = note.text;
+      document.getElementById('modalText').style.display = 'block';
+      document.getElementById('modalEditBox').style.display = 'none';
+
       document.getElementById('modalLikesCount').innerText = note.likes || 0;
 
       const likeBtn = document.getElementById('modalLikeBtn');
@@ -848,19 +1023,64 @@
         });
       };
 
-      const delBtn = document.getElementById('modalDelBtn');
-      delBtn.onclick = () => {
-        if (confirm('이 메모를 삭제하시겠습니까?')) {
-          currentBoardRef.child(`notes/${key}`).remove();
-          closeModal();
-        }
-      };
-
       document.getElementById('detailModal').classList.add('show');
     }
 
     function closeModal() {
       document.getElementById('detailModal').classList.remove('show');
+      activeModalKey = null;
+    }
+
+    function startEdit() {
+      const note = currentSessionData.notes ? currentSessionData.notes[activeModalKey] : null;
+      if (!note) return;
+
+      const inputPwd = prompt('작성 시 입력한 비밀번호(또는 관리자 비밀번호)를 입력하세요:');
+      if (inputPwd === null) return;
+
+      if ((note.pwd && inputPwd === note.pwd) || inputPwd === ADMIN_PASSWORD || (!note.pwd && inputPwd === ADMIN_PASSWORD)) {
+        document.getElementById('modalText').style.display = 'none';
+        document.getElementById('modalEditBox').style.display = 'flex';
+        document.getElementById('modalEditTextarea').value = note.text;
+        document.getElementById('modalEditTextarea').focus();
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    function cancelEdit() {
+      document.getElementById('modalText').style.display = 'block';
+      document.getElementById('modalEditBox').style.display = 'none';
+    }
+
+    function saveEdit() {
+      const newText = document.getElementById('modalEditTextarea').value.trim();
+      if (!newText) {
+        alert('내용을 입력해 주세요.');
+        return;
+      }
+
+      currentBoardRef.child(`notes/${activeModalKey}`).update({
+        text: newText
+      }).then(() => {
+        document.getElementById('modalText').innerText = newText;
+        cancelEdit();
+      });
+    }
+
+    function handleDeleteNote() {
+      const note = currentSessionData.notes ? currentSessionData.notes[activeModalKey] : null;
+      if (!note) return;
+
+      const inputPwd = prompt('삭제하려면 작성 시 비밀번호(또는 관리자 비밀번호)를 입력하세요:');
+      if (inputPwd === null) return;
+
+      if ((note.pwd && inputPwd === note.pwd) || inputPwd === ADMIN_PASSWORD || (!note.pwd && inputPwd === ADMIN_PASSWORD)) {
+        currentBoardRef.child(`notes/${activeModalKey}`).remove();
+        closeModal();
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+      }
     }
 
     async function generatePDFReport() {
@@ -888,17 +1108,13 @@
         guide.style.visibility = 'visible';
       }
 
-      // 화면에 놓여 있는 실제 위치(또는 갱신된 category) 기준으로 분류
       const categories = { continue: [], stop: [], start: [] };
       const notes = currentSessionData.notes || {};
 
       Object.keys(notes).forEach(k => {
         const item = notes[k];
-        // 만약 기존 데이터에 category가 잘못되어 있더라도 현재 좌표 기준 재계산
         const cat = determineCategoryByPosition(item.x + 3, item.y + 3);
-        if (categories[cat]) {
-          categories[cat].push(item);
-        }
+        if (categories[cat]) categories[cat].push(item);
       });
 
       ['continue', 'stop', 'start'].forEach(cat => {
@@ -913,10 +1129,11 @@
           listEl.innerHTML = `<li class="empty-notice">- 등록된 내용이 없습니다.</li>`;
         } else {
           arr.forEach(item => {
+            const team = item.team || '1';
             const li = document.createElement('li');
             li.className = 'report-item';
             li.innerHTML = `
-              <span class="report-text">• ${escapeHtml(item.text)}</span>
+              <span class="report-text"><span class="report-team-tag">[${team}모둠]</span>• ${escapeHtml(item.text)}</span>
               <span class="report-badge">👍 ${item.likes || 0}</span>
             `;
             listEl.appendChild(li);
@@ -980,12 +1197,6 @@
       };
       reader.readAsText(file);
       event.target.value = '';
-    }
-
-    function clearCurrentNotes() {
-      if (confirm('현재 보드의 모든 메모를 비우시겠습니까? (보드 자체는 유지됩니다)')) {
-        currentBoardRef.child('notes').remove();
-      }
     }
 
     function escapeHtml(str) {
