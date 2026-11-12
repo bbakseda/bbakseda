@@ -1,784 +1,799 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>과학 실험 시뮬레이터 | 세기와 높낮이가 다른 소리 내기</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
-    body {
-      font-family: 'Noto Sans KR', sans-serif;
-      background-color: #f0f4f8;
-      user-select: none;
-    }
-    .card-flip {
-      transition: transform 0.4s ease, box-shadow 0.2s ease;
-    }
-    .card-flip:hover {
-      transform: translateY(-3px);
-    }
-    .key-active {
-      transform: scale(0.96) translateY(3px) !important;
-      filter: brightness(1.15);
-    }
-    .string-vibrate {
-      animation: vibrate 0.15s linear infinite;
-    }
-    @keyframes vibrate {
-      0% { transform: translateY(-2px); }
-      50% { transform: translateY(2px); }
-      100% { transform: translateY(-2px); }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>과학 실험 시뮬레이터 - 세기와 높낮이가 다른 소리 내기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f7ff;
+            user-select: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none;
+        }
+        .font-title {
+            font-family: 'Jua', sans-serif;
+        }
+        /* 카드 뒤집기 효과 */
+        .card-container {
+            perspective: 1000px;
+        }
+        .card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .card-flipped {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            backface-visibility: hidden;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+        /* 건반 누름 효과 */
+        .key-active {
+            transform: translateY(4px) scale(0.97);
+            filter: brightness(1.18);
+        }
+        /* 우쿨렐레 줄 진동 애니메이션 */
+        @keyframes vibrate {
+            0% { transform: translateY(-2.5px); }
+            25% { transform: translateY(2.5px); }
+            50% { transform: translateY(-2.5px); }
+            75% { transform: translateY(2.5px); }
+            100% { transform: translateY(0); }
+        }
+        .string-vibrate {
+            animation: vibrate 0.14s ease-in-out 2;
+        }
+    </style>
 </head>
-<body class="text-slate-800 pb-12">
+<body class="text-slate-800 pb-12" onpointerdown="unlockAudioContext()">
 
-  <!-- 상단 헤더 -->
-  <header class="bg-amber-500 text-white shadow-md">
-    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <div class="flex items-center gap-3">
-        <span class="bg-white text-amber-600 font-black px-2.5 py-1 rounded-lg text-sm shadow-sm">초등 과학</span>
-        <h1 class="text-xl sm:text-2xl font-bold tracking-tight">4. 세기와 높낮이가 다른 소리를 내 보자!</h1>
-      </div>
-      <div class="text-xs sm:text-sm bg-amber-600/80 px-3 py-1 rounded-full">
-        🔊 스피커 볼륨을 켜고 실험해 보세요
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-5xl mx-auto px-4 mt-6 space-y-6">
-
-    <!-- 1단계: 카드 뽑기 미션 영역 -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <div>
-          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <span class="bg-rose-500 text-white text-xs px-2 py-0.5 rounded-md">활동 1</span>
-            악기 카드와 소리 카드 뽑기
-          </h2>
-          <p class="text-sm text-slate-500 mt-0.5">카드를 뽑아 미션 문장을 완성하고, 알맞은 순서로 연주해 보세요.</p>
-        </div>
-        <div class="flex gap-2">
-          <button onclick="drawCards()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-sm shadow transition flex items-center gap-1.5">
-            <span>🎴 카드 다시 뽑기</span>
-          </button>
-          <button onclick="toggleFreeMode()" id="freeModeBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-2 rounded-xl text-sm transition">
-            자유 연주 모드
-          </button>
-        </div>
-      </div>
-
-      <!-- 카드 2장 + 완성 문장 -->
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-        <!-- 악기 카드 -->
-        <div onclick="drawInstrumentCard()" class="md:col-span-3 cursor-pointer card-flip bg-emerald-50 border-2 border-emerald-300 rounded-xl p-4 text-center shadow-sm">
-          <div class="text-xs font-bold text-emerald-600 mb-1">악기 카드 (클릭하여 변경)</div>
-          <div id="cardInstIcon" class="text-4xl my-2">🎸</div>
-          <div id="cardInstName" class="text-lg font-black text-emerald-900">우쿨렐레</div>
-        </div>
-
-        <!-- 소리 카드 -->
-        <div onclick="drawSoundCard()" class="md:col-span-3 cursor-pointer card-flip bg-amber-50 border-2 border-amber-300 rounded-xl p-4 text-center shadow-sm">
-          <div class="text-xs font-bold text-amber-600 mb-1">소리 카드 (클릭하여 변경)</div>
-          <div id="cardSoundIcon" class="text-4xl my-2">📈</div>
-          <div id="cardSoundName" class="text-lg font-black text-amber-900">높낮이를 점점 높게</div>
-        </div>
-
-        <!-- 미션 문장 및 판정 패널 -->
-        <div class="md:col-span-6 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between h-full">
-          <div>
-            <div class="text-xs font-bold text-slate-400 uppercase">완성된 미션 문장</div>
-            <p id="missionSentence" class="text-lg sm:text-xl font-bold text-slate-800 mt-1">
-              "<span class="text-emerald-600">우쿨렐레</span>로 <span class="text-amber-600">높낮이를 점점 높게</span> 소리를 낼 거야!"
-            </p>
-          </div>
-
-          <div class="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
-            <div class="text-xs text-slate-600">
-              연주 기록 (최근 4음): <span id="playHistoryText" class="font-bold text-indigo-600">없음</span>
+    <!-- 상단 헤더 -->
+    <header class="bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md py-4 px-6 mb-6">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <span class="bg-amber-400 text-slate-900 font-title px-3 py-1 rounded-full text-sm shadow">초등 과학 실험</span>
+                <h1 class="font-title text-2xl sm:text-3xl tracking-wide">세기와 높낮이가 다른 소리 내기</h1>
             </div>
-            <button onclick="resetHistory()" class="text-xs text-slate-500 hover:text-slate-800 underline">기록 초기화</button>
-          </div>
-          <div id="missionFeedback" class="mt-2 text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">
-            💡 음을 3번 이상 연속으로 연주하면 미션 성공 여부를 확인해 줍니다!
-          </div>
+            <p class="text-sky-100 text-sm">카드를 뽑아 문장을 완성하고, 악기로 직접 연주해 보세요!</p>
         </div>
-      </div>
-    </section>
-
-    <!-- 2단계: 가상 악기 연주 & 실시간 파형 관찰 -->
-    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      
-      <!-- 왼쪽: 악기 선택 및 조작부 (7칸) -->
-      <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
-        <div>
-          <!-- 악기 탭 -->
-          <div class="flex border-b border-slate-200 pb-3 mb-4 gap-2">
-            <button onclick="selectInstrument('glockenspiel')" id="tab-glockenspiel" class="inst-tab flex-1 py-2.5 px-3 rounded-xl font-bold text-sm transition bg-indigo-600 text-white shadow">
-              🎹 글로켄슈필
-            </button>
-            <button onclick="selectInstrument('kalimba')" id="tab-kalimba" class="inst-tab flex-1 py-2.5 px-3 rounded-xl font-bold text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200">
-              🪵 칼림바
-            </button>
-            <button onclick="selectInstrument('ukulele')" id="tab-ukulele" class="inst-tab flex-1 py-2.5 px-3 rounded-xl font-bold text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200">
-              🎸 우쿨렐레
-            </button>
-          </div>
-
-          <!-- 연주 세기 조절 슬라이더 -->
-          <div class="bg-slate-50 rounded-xl p-3.5 mb-5 border border-slate-200">
-            <div class="flex justify-between items-center mb-1.5">
-              <label for="volumeSlider" class="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                💪 연주하는 세기 (치거나 튕기는 힘)
-              </label>
-              <span id="volumeLabel" class="text-sm font-black text-indigo-600 bg-indigo-100 px-2.5 py-0.5 rounded-md">보통 (60%)</span>
-            </div>
-            <input type="range" id="volumeSlider" min="15" max="100" value="60" class="w-full accent-indigo-600 cursor-pointer" oninput="updateVolumeLabel()" />
-            <div class="flex justify-between text-xs text-slate-400 mt-1">
-              <span>살살 (작은 소리)</span>
-              <span>보통</span>
-              <span>세게 (큰 소리)</span>
-            </div>
-          </div>
-
-          <!-- 악기별 인터페이스 영역 -->
-          <div id="instrumentStage" class="min-h-[250px] flex flex-col items-center justify-center bg-amber-50/40 rounded-xl border border-amber-100 p-4">
-            <!-- JS로 렌더링됨 -->
-          </div>
-        </div>
-
-        <!-- 악기별 조작 팁 -->
-        <div id="instrumentTip" class="mt-4 text-xs sm:text-sm text-slate-600 bg-slate-100 p-3 rounded-xl">
-          <!-- JS로 렌더링됨 -->
-        </div>
-      </div>
-
-      <!-- 오른쪽: 실시간 음파(오실로스코프) 및 과학 원리 모니터 (5칸) -->
-      <div class="lg:col-span-5 bg-slate-900 text-white rounded-2xl shadow-md p-5 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-base flex items-center gap-2 text-emerald-400">
-              <span>📊 실시간 소리 파형 관찰기</span>
-            </h3>
-            <span class="text-xs text-slate-400">오실로스코프</span>
-          </div>
-          <p class="text-xs text-slate-300 mb-3">
-            소리의 <strong>세기</strong>가 크면 파형의 위아래 폭(진폭)이 커지고, <strong>높낮이</strong>가 높으면 물결이 촘촘해집니다.
-          </p>
-
-          <!-- 파형 캔버스 -->
-          <div class="relative bg-slate-950 rounded-xl border border-slate-700 overflow-hidden shadow-inner">
-            <canvas id="waveCanvas" width="400" height="200" class="w-full h-48 block"></canvas>
-            <div class="absolute top-2 left-3 text-[11px] text-slate-400 font-mono">진폭(세기) ↑</div>
-            <div class="absolute bottom-2 right-3 text-[11px] text-slate-400 font-mono">진동수(높낮이) →</div>
-          </div>
-        </div>
-
-        <!-- 현재 측정 데이터 표시 -->
-        <div class="mt-4 grid grid-cols-2 gap-3">
-          <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
-            <div class="text-xs text-slate-400">방금 낸 소리의 세기</div>
-            <div id="statAmplitude" class="text-lg font-black text-amber-400 mt-0.5">-</div>
-            <div class="text-[11px] text-slate-400 mt-0.5">진폭 크기</div>
-          </div>
-          <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-3">
-            <div class="text-xs text-slate-400">방금 낸 소리의 높낮이</div>
-            <div id="statFrequency" class="text-lg font-black text-sky-400 mt-0.5">-</div>
-            <div class="text-[11px] text-slate-400 mt-0.5">진동수 (Hz)</div>
-          </div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- 3단계: 교과서 '정리해요' 활동 -->
-    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-      <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-3">
-        <span class="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-md">정리해요</span>
-        내가 고른 악기로 세기와 높낮이가 다른 소리를 내는 방법 정리하기
-      </h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <!-- 글로켄슈필 정리 -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
-          <div class="font-bold text-indigo-700 text-base">🎹 글로켄슈필</div>
-          <div>
-            <span class="font-semibold text-slate-600">• 세기 조절:</span> 채로 음판을
-            <select id="q-glock-amp" onchange="checkQuiz()" class="border border-slate-300 rounded px-1.5 py-0.5 bg-white font-bold text-indigo-700">
-              <option value="">선택</option>
-              <option value="correct">세게 치면 큰 소리, 약하게 치면 작은 소리</option>
-              <option value="wrong">긴 음판을 치면 큰 소리, 짧은 음판을 치면 작은 소리</option>
-            </select>
-            가 난다.
-          </div>
-          <div>
-            <span class="font-semibold text-slate-600">• 높낮이 조절:</span> 음판의 길이가
-            <select id="q-glock-pitch" onchange="checkQuiz()" class="border border-slate-300 rounded px-1.5 py-0.5 bg-white font-bold text-indigo-700">
-              <option value="">선택</option>
-              <option value="correct">짧을수록 높은 소리, 길수록 낮은 소리</option>
-              <option value="wrong">길수록 높은 소리, 짧을수록 낮은 소리</option>
-            </select>
-            가 난다.
-          </div>
-        </div>
-
-        <!-- 칼림바 정리 -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
-          <div class="font-bold text-amber-700 text-base">🪵 칼림바</div>
-          <div>
-            <span class="font-semibold text-slate-600">• 세기 조절:</span> 엄지손가락으로 건반을
-            <select id="q-kal-amp" onchange="checkQuiz()" class="border border-slate-300 rounded px-1.5 py-0.5 bg-white font-bold text-amber-700">
-              <option value="">선택</option>
-              <option value="correct">세게 튕기면 큰 소리, 살살 튕기면 작은 소리</option>
-              <option value="wrong">바깥쪽을 튕기면 큰 소리, 안쪽을 튕기면 작은 소리</option>
-            </select>
-            가 난다.
-          </div>
-          <div>
-            <span class="font-semibold text-slate-600">• 높낮이 조절:</span> 건반의 길이가
-            <select id="q-kal-pitch" onchange="checkQuiz()" class="border border-slate-300 rounded px-1.5 py-0.5 bg-white font-bold text-amber-700">
-              <option value="">선택</option>
-              <option value="correct">짧을수록(바깥쪽) 높은 소리, 길수록(가운데) 낮은 소리</option>
-              <option value="wrong">길수록(가운데) 높은 소리, 짧을수록(바깥쪽) 낮은 소리</option>
-            </select>
-            가 난다.
-          </div>
-        </div>
-
-        <!-- 우쿨렐레 정리 -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
-          <div class="font-bold text-emerald-700 text-base">🎸 우쿨렐레</div>
-          <div>
-            <span class="font-semibold text-slate-600">• 세기 조절:</span> 줄을
-            <select id="q-uku-amp" onchange="checkQuiz()" class="border border-slate-300 rounded px-1.5 py-0.5 bg-white font-bold text-emerald-700">
-              <option value="">선택</option>
-              <option value="correct">세게 튕기면 큰 소리, 약하게 튕기면 작은 소리</option>
-              <option value="wrong">프렛을 누르면 큰 소리, 떼면 작은 소리</option>
-            </select>
-            가 난다.
-          </div>
-          <div>
-            <span class="font-semibold text-slate-600">• 높낮이 조절:</span> 손가락으로 줄을 눌러 진동하는 줄의 길이가
-            <select id="q-uku-pitch" onchange="checkQuiz()" class="border border-slate-300 rounded px-1.5 py-0.5 bg-white font-bold text-emerald-700">
-              <option value="">선택</option>
-              <option value="correct">짧아질수록 높은 소리, 길어질수록 낮은 소리</option>
-              <option value="wrong">길어질수록 높은 소리, 짧아질수록 낮은 소리</option>
-            </select>
-            가 난다.
-          </div>
-        </div>
-      </div>
-
-      <div id="quizResult" class="mt-3 text-sm font-bold text-slate-500">
-        빈칸을 모두 알맞게 선택해 실험 결과를 정리해 보세요!
-      </div>
-    </section>
-
-  </main>
-
-  <script>
-    // ==========================================
-    // 1. Web Audio API 사운드 엔진
-    // ==========================================
-    let audioCtx = null;
-
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-    }
-
-    // 악기별 음 합성 함수
-    function playTone(instrument, freq, volumePercent, noteLabel) {
-      initAudio();
-      const now = audioCtx.currentTime;
-      const gainVal = (volumePercent / 100) * 0.7; // 최대 0.7로 클리핑 방지
-
-      const osc = audioCtx.createOscillator();
-      const subOsc = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-
-      if (instrument === 'glockenspiel') {
-        // 글로켄슈필: 맑고 영롱한 금속성 고배음
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-        subOsc.type = 'triangle';
-        subOsc.frequency.setValueAtTime(freq * 2, now); // 1옥타브 위 배음
-
-        const subGain = audioCtx.createGain();
-        subGain.gain.setValueAtTime(gainVal * 0.25, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-
-        gainNode.gain.setValueAtTime(0.001, now);
-        gainNode.gain.linearRampToValueAtTime(gainVal, now + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
-
-        osc.connect(gainNode);
-        subOsc.connect(subGain);
-        subGain.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-
-        osc.start(now);
-        subOsc.start(now);
-        osc.stop(now + 1.45);
-        subOsc.stop(now + 1.45);
-
-      } else if (instrument === 'kalimba') {
-        // 칼림바: 따뜻하고 통통 튀는 울림통 소리
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now);
-        subOsc.type = 'sine';
-        subOsc.frequency.setValueAtTime(freq * 3, now);
-
-        const subGain = audioCtx.createGain();
-        subGain.gain.setValueAtTime(gainVal * 0.15, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-        gainNode.gain.setValueAtTime(0.001, now);
-        gainNode.gain.linearRampToValueAtTime(gainVal * 1.1, now + 0.015);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
-
-        osc.connect(gainNode);
-        subOsc.connect(subGain);
-        subGain.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-
-        osc.start(now);
-        subOsc.start(now);
-        osc.stop(now + 1.15);
-        subOsc.stop(now + 1.15);
-
-      } else if (instrument === 'ukulele') {
-        // 우쿨렐레: 나일론 줄의 부드러운 탄현음
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now);
-        subOsc.type = 'sine';
-        subOsc.frequency.setValueAtTime(freq * 2, now);
-
-        const filter = audioCtx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1400 + volumePercent * 15, now);
-
-        const subGain = audioCtx.createGain();
-        subGain.gain.setValueAtTime(gainVal * 0.3, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-
-        gainNode.gain.setValueAtTime(0.001, now);
-        gainNode.gain.linearRampToValueAtTime(gainVal, now + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-
-        osc.connect(filter);
-        subOsc.connect(subGain);
-        subGain.connect(filter);
-        filter.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-
-        osc.start(now);
-        subOsc.start(now);
-        osc.stop(now + 1.25);
-        subOsc.stop(now + 1.25);
-      }
-
-      // 파형 애니메이션 트리거 및 통계 업데이트
-      triggerWave(freq, volumePercent);
-      updateStats(freq, volumePercent, noteLabel);
-      recordPlay(instrument, freq, volumePercent, noteLabel);
-    }
-
-    // ==========================================
-    // 2. 실시간 오실로스코프(파형) 캔버스
-    // ==========================================
-    const canvas = document.getElementById('waveCanvas');
-    const ctx = canvas.getContext('2d');
-    let waveFreq = 440;
-    let waveAmp = 0;
-    let phase = 0;
-
-    function triggerWave(freq, volumePercent) {
-      waveFreq = freq;
-      waveAmp = (volumePercent / 100) * 78; // 최대 진폭 픽셀
-    }
-
-    function drawWaveLoop() {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      // 중심 기준선 (격자)
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, h / 2);
-      ctx.lineTo(w, h / 2);
-      ctx.stroke();
-
-      // 사인파 그리기
-      ctx.strokeStyle = waveAmp > 2 ? '#34d399' : '#475569';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-
-      // 진동수에 비례해 화면 내 파형 밀도 조절
-      const cycles = (waveFreq / 130); 
-      for (let x = 0; x < w; x++) {
-        const t = (x / w) * Math.PI * 2 * cycles + phase;
-        const y = h / 2 + Math.sin(t) * waveAmp;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
-      // 서서히 감쇠하는 효과
-      phase += 0.15;
-      waveAmp *= 0.965;
-      if (waveAmp < 0.3) waveAmp = 0;
-
-      requestAnimationFrame(drawWaveLoop);
-    }
-    drawWaveLoop();
-
-    function updateStats(freq, volumePercent, noteLabel) {
-      let ampText = volumePercent < 40 ? '작은 소리' : volumePercent > 75 ? '큰 소리' : '보통 소리';
-      document.getElementById('statAmplitude').innerText = `${ampText} (${volumePercent}%)`;
-      document.getElementById('statFrequency').innerText = `${noteLabel} (${Math.round(freq)}Hz)`;
-    }
-
-    // ==========================================
-    // 3. 교과서 카드 뽑기 & 미션 판정 로직
-    // ==========================================
-    const instrumentsList = [
-      { id: 'glockenspiel', name: '글로켄슈필', icon: '🎹' },
-      { id: 'kalimba', name: '칼림바', icon: '🪵' },
-      { id: 'ukulele', name: '우쿨렐레', icon: '🎸' }
-    ];
-
-    const soundCardsList = [
-      { id: 'amp_up', name: '세기를 점점 크게', icon: '🔊' },
-      { id: 'amp_down', name: '세기를 점점 작게', icon: '🔉' },
-      { id: 'pitch_up', name: '높낮이를 점점 높게', icon: '📈' },
-      { id: 'pitch_down', name: '높낮이를 점점 낮게', icon: '📉' }
-    ];
-
-    let currentMissionInst = instrumentsList[2];
-    let currentMissionSound = soundCardsList[2];
-    let isFreeMode = false;
-    let playHistory = [];
-
-    function drawInstrumentCard() {
-      const next = instrumentsList[(instrumentsList.findIndex(i => i.id === currentMissionInst.id) + 1) % instrumentsList.length];
-      currentMissionInst = next;
-      renderMissionCard();
-      selectInstrument(currentMissionInst.id);
-      resetHistory();
-    }
-
-    function drawSoundCard() {
-      const next = soundCardsList[(soundCardsList.findIndex(s => s.id === currentMissionSound.id) + 1) % soundCardsList.length];
-      currentMissionSound = next;
-      renderMissionCard();
-      resetHistory();
-    }
-
-    function drawCards() {
-      currentMissionInst = instrumentsList[Math.floor(Math.random() * instrumentsList.length)];
-      currentMissionSound = soundCardsList[Math.floor(Math.random() * soundCardsList.length)];
-      renderMissionCard();
-      selectInstrument(currentMissionInst.id);
-      resetHistory();
-    }
-
-    function renderMissionCard() {
-      isFreeMode = false;
-      document.getElementById('freeModeBtn').classList.remove('bg-amber-500', 'text-white');
-      document.getElementById('freeModeBtn').classList.add('bg-slate-100', 'text-slate-700');
-
-      document.getElementById('cardInstIcon').innerText = currentMissionInst.icon;
-      document.getElementById('cardInstName').innerText = currentMissionInst.name;
-      document.getElementById('cardSoundIcon').innerText = currentMissionSound.icon;
-      document.getElementById('cardSoundName').innerText = currentMissionSound.name;
-
-      document.getElementById('missionSentence').innerHTML =
-        `"<span class="text-emerald-600">${currentMissionInst.name}</span>로 <span class="text-amber-600">${currentMissionSound.name}</span> 소리를 낼 거야!"`;
-    }
-
-    function toggleFreeMode() {
-      isFreeMode = !isFreeMode;
-      const btn = document.getElementById('freeModeBtn');
-      if (isFreeMode) {
-        btn.classList.remove('bg-slate-100', 'text-slate-700');
-        btn.classList.add('bg-amber-500', 'text-white');
-        document.getElementById('missionSentence').innerHTML = `🎵 <span class="text-indigo-600">자유 연주 모드</span>: 원하는 악기를 자유롭게 연주하며 파형을 관찰해 보세요!`;
-        document.getElementById('missionFeedback').innerText = '자유롭게 세기와 높낮이를 바꾸며 소리 파형의 차이를 비교해 보세요.';
-      } else {
-        renderMissionCard();
-        resetHistory();
-      }
-    }
-
-    function resetHistory() {
-      playHistory = [];
-      document.getElementById('playHistoryText').innerText = '없음';
-      if (!isFreeMode) {
-        document.getElementById('missionFeedback').className = 'mt-2 text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg';
-        document.getElementById('missionFeedback').innerText = '💡 음을 3번 이상 연속으로 연주하면 미션 성공 여부를 확인해 줍니다!';
-      }
-    }
-
-    function recordPlay(instId, freq, vol, label) {
-      playHistory.push({ instId, freq, vol, label });
-      if (playHistory.length > 4) playHistory.shift();
-
-      const histStr = playHistory.map(p => `${p.label}(${p.vol}%)`).join(' → ');
-      document.getElementById('playHistoryText').innerText = histStr;
-
-      if (isFreeMode || playHistory.length < 3) return;
-
-      const fb = document.getElementById('missionFeedback');
-      // 1) 악기가 미션과 일치하는지 검사
-      const wrongInst = playHistory.some(p => p.instId !== currentMissionInst.id);
-      if (wrongInst) {
-        fb.className = 'mt-2 text-sm font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-lg';
-        fb.innerText = `⚠️ 미션 악기는 '${currentMissionInst.name}'입니다! 탭에서 악기를 선택 후 [기록 초기화]를 눌러보세요.`;
-        return;
-      }
-
-      // 2) 소리 조건 검사 (최근 3음 기준)
-      const recent = playHistory.slice(-3);
-      let success = false;
-      const mType = currentMissionSound.id;
-
-      if (mType === 'amp_up') {
-        success = recent[0].vol < recent[1].vol && recent[1].vol < recent[2].vol;
-      } else if (mType === 'amp_down') {
-        success = recent[0].vol > recent[1].vol && recent[1].vol > recent[2].vol;
-      } else if (mType === 'pitch_up') {
-        success = recent[0].freq < recent[1].freq && recent[1].freq < recent[2].freq;
-      } else if (mType === 'pitch_down') {
-        success = recent[0].freq > recent[1].freq && recent[1].freq > recent[2].freq;
-      }
-
-      if (success) {
-        fb.className = 'mt-2 text-sm font-bold text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-lg';
-        fb.innerText = `🎉 성공! '${currentMissionInst.name}'로 '${currentMissionSound.name}' 연주를 정확하게 해냈습니다!`;
-      } else {
-        fb.className = 'mt-2 text-sm font-bold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg';
-        fb.innerText = `🤔 조금만 더! '${currentMissionSound.name}'가 되도록 순서대로 다시 연주해 보세요.`;
-      }
-    }
-
-    // ==========================================
-    // 4. 가상 악기 렌더링 및 인터랙션
-    // ==========================================
-    let currentInstrument = 'glockenspiel';
-    let selectedFret = 0; // 우쿨렐레 프렛 (0: 개방현, 1~4프렛)
-
-    function updateVolumeLabel() {
-      const val = document.getElementById('volumeSlider').value;
-      let desc = val < 40 ? '약하게' : val > 75 ? '세게' : '보통';
-      document.getElementById('volumeLabel').innerText = `${desc} (${val}%)`;
-    }
-
-    function selectInstrument(instId) {
-      currentInstrument = instId;
-      document.querySelectorAll('.inst-tab').forEach(btn => {
-        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
-        btn.classList.add('bg-slate-100', 'text-slate-600');
-      });
-      const activeBtn = document.getElementById(`tab-${instId}`);
-      activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
-      activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
-
-      renderInstrumentStage();
-    }
-
-    function renderInstrumentStage() {
-      const stage = document.getElementById('instrumentStage');
-      const tip = document.getElementById('instrumentTip');
-
-      if (currentInstrument === 'glockenspiel') {
-        const notes = [
-          { name: '도', freq: 523.25, h: 185, color: 'bg-rose-400' },
-          { name: '레', freq: 587.33, h: 172, color: 'bg-orange-400' },
-          { name: '미', freq: 659.25, h: 160, color: 'bg-amber-400' },
-          { name: '파', freq: 698.46, h: 148, color: 'bg-emerald-400' },
-          { name: '솔', freq: 783.99, h: 136, color: 'bg-teal-400' },
-          { name: '라', freq: 880.00, h: 124, color: 'bg-sky-400' },
-          { name: '시', freq: 987.77, h: 112, color: 'bg-indigo-400' },
-          { name: '높은 도', freq: 1046.50, h: 100, color: 'bg-purple-400' }
-        ];
-
-        stage.innerHTML = `
-          <div class="text-xs font-bold text-slate-500 mb-3">음판을 클릭하거나 숫자 키(1~8)를 눌러 보세요</div>
-          <div class="flex items-end justify-center gap-2 sm:gap-3 h-48 px-2">
-            ${notes.map((n, idx) => `
-              <button id="glock-key-${idx}" onclick="hitGlock(${idx}, ${n.freq}, '${n.name}')"
-                style="height: ${n.h}px;"
-                class="w-9 sm:w-11 ${n.color} rounded-b-xl rounded-t-md shadow-md border-2 border-white/60 flex flex-col justify-between items-center py-2 text-white font-bold transition transform hover:brightness-105 cursor-pointer">
-                <span class="w-2 h-2 rounded-full bg-white/80"></span>
-                <span class="text-xs sm:text-sm drop-shadow">${n.name}</span>
-                <span class="w-2 h-2 rounded-full bg-white/80"></span>
-              </button>
-            `).join('')}
-          </div>
-        `;
-        tip.innerHTML = `💡 <strong>글로켄슈필 원리:</strong> 금속 음판의 길이가 <strong>짧을수록(오른쪽) 높은 소리</strong>가 나고, 위쪽 슬라이더로 치는 세기를 크게 하면 <strong>큰 소리</strong>가 납니다.`;
-
-      } else if (currentInstrument === 'kalimba') {
-        // 실제 칼림바 배열: 바깥쪽이 짧고 높은음, 가운데가 길고 낮은음
-        const tines = [
-          { name: '시', freq: 987.77, h: 105 },
-          { name: '솔', freq: 783.99, h: 125 },
-          { name: '미', freq: 659.25, h: 145 },
-          { name: '도', freq: 523.25, h: 170 }, // 가운데 가장 긴 건반
-          { name: '레', freq: 587.33, h: 158 },
-          { name: '파', freq: 698.46, h: 135 },
-          { name: '라', freq: 880.00, h: 115 }
-        ];
-
-        stage.innerHTML = `
-          <div class="text-xs font-bold text-slate-500 mb-2">가운데 긴 건반과 바깥쪽 짧은 건반을 튕겨 보세요</div>
-          <div class="bg-amber-800 rounded-3xl p-4 shadow-inner border-4 border-amber-900 w-full max-w-md flex flex-col items-center">
-            <div class="w-full h-3 bg-amber-950 rounded-full mb-1"></div>
-            <div class="flex items-start justify-center gap-2 sm:gap-3 h-44">
-              ${tines.map((t, idx) => `
-                <button id="kal-key-${idx}" onclick="pluckKalimba(${idx}, ${t.freq}, '${t.name}')"
-                  style="height: ${t.h}px;"
-                  class="w-9 sm:w-10 bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 border border-slate-400 rounded-b-xl shadow-md flex flex-col justify-end items-center pb-2 text-slate-800 font-black transition cursor-pointer hover:from-white">
-                  <span class="text-xs sm:text-sm">${t.name}</span>
-                </button>
-              `).join('')}
-            </div>
-            <div class="w-12 h-12 rounded-full bg-amber-950 border-2 border-amber-700 mt-1 flex items-center justify-center text-[10px] text-amber-400/60">울림구멍</div>
-          </div>
-        `;
-        tip.innerHTML = `💡 <strong>칼림바 원리:</strong> <strong>가운데 긴 건반은 낮은 소리</strong>가 나고, <strong>양쪽 바깥의 짧은 건반으로 갈수록 높은 소리</strong>가 납니다.`;
-
-      } else if (currentInstrument === 'ukulele') {
-        // 우쿨렐레 4줄 (4번줄 솔, 3번줄 도, 2번줄 미, 1번줄 라) + 프렛 선택
-        const strings = [
-          { num: '4번 줄', baseName: '솔', baseFreq: 392.00, thickness: 'h-1.5' },
-          { num: '3번 줄', baseName: '도', baseFreq: 261.63, thickness: 'h-2' },
-          { num: '2번 줄', baseName: '미', baseFreq: 329.63, thickness: 'h-1.5' },
-          { num: '1번 줄', baseName: '라', baseFreq: 440.00, thickness: 'h-1' }
-        ];
-        const fretNames = ['개방현 (누르지 않음)', '1프렛 (조금 짧게)', '2프렛 (더 짧게)', '3프렛 (많이 짧게)', '4프렛 (가장 짧게)'];
-
-        stage.innerHTML = `
-          <div class="w-full max-w-md space-y-3">
-            <!-- 프렛(손가락 짚는 위치) 선택 -->
-            <div>
-              <div class="text-xs font-bold text-slate-600 mb-1.5">1️⃣ 왼손으로 줄 짚는 위치 선택 (줄의 길이 조절):</div>
-              <div class="grid grid-cols-5 gap-1">
-                ${[0, 1, 2, 3, 4].map(f => `
-                  <button onclick="setFret(${f})"
-                    class="py-1.5 px-1 rounded-lg text-xs font-bold border transition ${selectedFret === f ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}">
-                    ${f === 0 ? '안 누름' : f + '칸'}
-                  </button>
-                `).join('')}
-              </div>
-              <div class="text-[11px] text-emerald-700 font-semibold mt-1 text-right">
-                현재 상태: ${fretNames[selectedFret]}
-              </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 space-y-6">
+
+        <!-- 1단계: 활동 카드 뽑기 영역 -->
+        <section class="bg-white rounded-2xl shadow-sm border border-sky-100 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 class="font-title text-xl text-sky-700 flex items-center gap-2">
+                    <span class="bg-sky-100 text-sky-700 w-7 h-7 rounded-full inline-flex items-center justify-center text-base">1</span>
+                    악기 카드와 소리 카드 뽑기
+                </h2>
+                <div class="flex gap-2">
+                    <button onpointerdown="drawCards()" class="bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-900 font-bold px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5 text-sm">
+                        🎲 카드 랜덤 뽑기
+                    </button>
+                    <button onpointerdown="resetCards()" class="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-600 font-medium px-3 py-2 rounded-xl transition text-sm">
+                        다시 뒤집기
+                    </button>
+                </div>
             </div>
 
-            <!-- 4개의 줄 튕기기 -->
-            <div class="bg-amber-900 rounded-2xl p-4 border-4 border-amber-950 shadow-inner space-y-3 relative">
-              <div class="text-xs text-amber-200 font-bold mb-1">2️⃣ 줄을 클릭해서 튕겨 보세요:</div>
-              ${strings.map((s, idx) => {
-                // 반음(2^(1/12))씩 진동수 상승
-                const actualFreq = s.baseFreq * Math.pow(2, selectedFret / 12);
-                const label = selectedFret === 0 ? `${s.num}(${s.baseName})` : `${s.num}+${selectedFret}칸`;
-                return `
-                  <div onclick="pluckString(${idx}, ${actualFreq}, '${label}')"
-                    class="group cursor-pointer py-1.5 flex items-center gap-3">
-                    <span class="text-xs font-bold text-amber-200 w-14">${s.num}</span>
-                    <div class="flex-1 relative flex items-center">
-                      <!-- 짚은 위치 표시 마커 -->
-                      ${selectedFret > 0 ? `<div style="left: ${selectedFret * 18}%" class="absolute w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white z-10 shadow"></div>` : ''}
-                      <div id="uku-str-${idx}" class="w-full ${s.thickness} bg-amber-100 group-hover:bg-white rounded-full shadow transition"></div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                <!-- 카드 2장 -->
+                <div class="md:col-span-5 grid grid-cols-2 gap-3">
+                    <!-- 악기 카드 -->
+                    <div class="card-container h-36 cursor-pointer" onpointerdown="drawSingleCard('instrument')">
+                        <div id="instCardInner" class="card-inner relative w-full h-full">
+                            <div class="card-front absolute w-full h-full bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl shadow flex flex-col items-center justify-center text-white p-2 border-2 border-emerald-200">
+                                <span class="text-3xl mb-1">🎵</span>
+                                <span class="font-title text-lg">악기 카드</span>
+                                <span class="text-xs text-emerald-100 mt-1">터치해서 뽑기</span>
+                            </div>
+                            <div class="card-back absolute w-full h-full bg-emerald-50 rounded-xl shadow flex flex-col items-center justify-center p-2 border-2 border-emerald-400">
+                                <span id="instCardIcon" class="text-4xl mb-1">🎹</span>
+                                <span id="instCardText" class="font-title text-lg text-emerald-800">글로켄슈필</span>
+                            </div>
+                        </div>
                     </div>
-                    <span class="text-[11px] font-mono text-amber-300 w-12 text-right">${Math.round(actualFreq)}Hz</span>
-                  </div>
-                `;
-              }).join('')}
+
+                    <!-- 소리 카드 -->
+                    <div class="card-container h-36 cursor-pointer" onpointerdown="drawSingleCard('sound')">
+                        <div id="soundCardInner" class="card-inner relative w-full h-full">
+                            <div class="card-front absolute w-full h-full bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl shadow flex flex-col items-center justify-center text-white p-2 border-2 border-amber-200">
+                                <span class="text-3xl mb-1">🔊</span>
+                                <span class="font-title text-lg">소리 카드</span>
+                                <span class="text-xs text-amber-100 mt-1">터치해서 뽑기</span>
+                            </div>
+                            <div class="card-back absolute w-full h-full bg-amber-50 rounded-xl shadow flex flex-col items-center justify-center p-2 border-2 border-amber-400 text-center">
+                                <span id="soundCardBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900 mb-1">세기</span>
+                                <span id="soundCardText" class="font-title text-base sm:text-lg text-amber-900 leading-tight">세기를 점점 크게</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 완성된 문장 말풍선 -->
+                <div class="md:col-span-7 bg-sky-50 border-2 border-dashed border-sky-300 rounded-xl p-4 flex flex-col justify-center min-h-[9rem]">
+                    <span class="text-xs font-bold text-sky-600 mb-1">📢 완성된 미션 문장</span>
+                    <p id="missionSentence" class="font-title text-xl sm:text-2xl text-slate-700 leading-snug">
+                        카드를 뽑아 오늘의 연주 미션을 확인해 보세요!
+                    </p>
+                    <p id="missionHint" class="text-xs text-slate-500 mt-2">
+                        💡 팁: 카드를 뽑으면 아래에서 해당 악기가 자동으로 선택됩니다.
+                    </p>
+                </div>
             </div>
-          </div>
-        `;
-        tip.innerHTML = `💡 <strong>우쿨렐레 원리:</strong> 손가락으로 프렛(칸)을 눌러 <strong>진동하는 줄의 길이를 짧게 만들수록 높은 소리</strong>가 나며, 줄을 세게 튕길수록 <strong>큰 소리</strong>가 납니다.`;
-      }
-    }
+        </section>
 
-    function hitGlock(idx, freq, name) {
-      const vol = Number(document.getElementById('volumeSlider').value);
-      const el = document.getElementById(`glock-key-${idx}`);
-      el.classList.add('key-active');
-      setTimeout(() => el.classList.remove('key-active'), 150);
-      playTone('glockenspiel', freq, vol, name);
-    }
+        <!-- 2단계: 가상 악기 연주 & 오실로스코프 영역 -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- 왼쪽: 가상 악기 조작부 (7칸) -->
+            <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-sky-100 p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <h2 class="font-title text-xl text-sky-700 flex items-center gap-2">
+                            <span class="bg-sky-100 text-sky-700 w-7 h-7 rounded-full inline-flex items-center justify-center text-base">2</span>
+                            악기 연주하기
+                        </h2>
+                        <!-- 악기 선택 탭 -->
+                        <div class="flex bg-slate-100 p-1 rounded-xl gap-1">
+                            <button onpointerdown="selectInstrument('glockenspiel')" id="tab-glockenspiel" class="inst-tab px-3.5 py-2 rounded-lg text-sm font-bold bg-white text-sky-700 shadow-sm transition">글로켄슈필</button>
+                            <button onpointerdown="selectInstrument('kalimba')" id="tab-kalimba" class="inst-tab px-3.5 py-2 rounded-lg text-sm font-bold text-slate-600 hover:text-slate-900 transition">칼림바</button>
+                            <button onpointerdown="selectInstrument('ukulele')" id="tab-ukulele" class="inst-tab px-3.5 py-2 rounded-lg text-sm font-bold text-slate-600 hover:text-slate-900 transition">우쿨렐레</button>
+                        </div>
+                    </div>
 
-    function pluckKalimba(idx, freq, name) {
-      const vol = Number(document.getElementById('volumeSlider').value);
-      const el = document.getElementById(`kal-key-${idx}`);
-      el.classList.add('key-active');
-      setTimeout(() => el.classList.remove('key-active'), 150);
-      playTone('kalimba', freq, vol, name);
-    }
+                    <!-- 소리 세기(치거나 튕기는 힘) 조절 슬라이더 -->
+                    <div class="bg-slate-50 rounded-xl p-3.5 mb-5 border border-slate-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <label for="forceSlider" class="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                                💪 치거나 튕기는 세기 (진폭 조절)
+                            </label>
+                            <span id="forceLabel" class="text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">보통 세기 (60%)</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-slate-500 font-medium whitespace-nowrap">살살 (작은 소리)</span>
+                            <input type="range" id="forceSlider" min="15" max="100" value="60" oninput="updateForceLabel(this.value)" class="w-full h-3 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            <span class="text-xs text-slate-500 font-medium whitespace-nowrap">세게 (큰 소리)</span>
+                        </div>
+                    </div>
 
-    function setFret(fretNum) {
-      selectedFret = fretNum;
-      renderInstrumentStage();
-    }
+                    <!-- 악기별 연주 캔버스 -->
+                    <div id="instrumentStage" class="min-h-[250px] flex flex-col items-center justify-center bg-amber-50/50 rounded-xl border border-amber-200/70 p-4 relative">
+                        <!-- 자바스크립트로 악기 UI 렌더링 -->
+                    </div>
+                </div>
 
-    function pluckString(idx, freq, label) {
-      const vol = Number(document.getElementById('volumeSlider').value);
-      const el = document.getElementById(`uku-str-${idx}`);
-      el.classList.add('string-vibrate');
-      setTimeout(() => el.classList.remove('string-vibrate'), 300);
-      playTone('ukulele', freq, vol, label);
-    }
+                <!-- 자동 연주 도우미 버튼 -->
+                <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                    <span class="text-xs text-slate-500">직접 터치하거나 아래 예시 버튼으로 비교해 보세요:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onpointerdown="playDemo('louder')" class="text-xs bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 px-3 py-2 rounded-lg font-medium transition">▶ 점점 세게</button>
+                        <button onpointerdown="playDemo('softer')" class="text-xs bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 px-3 py-2 rounded-lg font-medium transition">▶ 점점 약하게</button>
+                        <button onpointerdown="playDemo('higher')" class="text-xs bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-700 border border-sky-200 px-3 py-2 rounded-lg font-medium transition">▶ 점점 높게</button>
+                        <button onpointerdown="playDemo('lower')" class="text-xs bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-700 border border-sky-200 px-3 py-2 rounded-lg font-medium transition">▶ 점점 낮게</button>
+                    </div>
+                </div>
+            </div>
 
-    // 키보드 단축키 지원 (글로켄슈필 1~8)
-    window.addEventListener('keydown', (e) => {
-      if (currentInstrument === 'glockenspiel' && e.key >= '1' && e.key <= '8') {
-        const idx = Number(e.key) - 1;
-        const btn = document.getElementById(`glock-key-${idx}`);
-        if (btn) btn.click();
-      }
-    });
+            <!-- 오른쪽: 실시간 소리 파형 관찰기 (5칸) -->
+            <div class="lg:col-span-5 bg-slate-900 text-white rounded-2xl shadow-md p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-title text-xl text-emerald-400 flex items-center gap-2">
+                            <span>📊</span> 소리 파형 관찰기
+                        </h2>
+                        <span id="statusBadge" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full border border-slate-700">대기 중</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">악기를 연주하면 소리의 <strong class="text-amber-300">세기(위아래 폭)</strong>와 <strong class="text-sky-300">높낮이(물결의 촘촘함)</strong>가 나타납니다.</p>
+                    
+                    <!-- 오실로스코프 캔버스 -->
+                    <div class="relative bg-slate-950 rounded-xl border border-slate-800 overflow-hidden h-52">
+                        <canvas id="waveCanvas" class="w-full h-full block"></canvas>
+                        <div class="absolute top-2 left-3 text-[11px] text-slate-500 pointer-events-none">진폭 (소리 세기)</div>
+                        <div class="absolute bottom-2 right-3 text-[11px] text-slate-500 pointer-events-none">진동수 (소리 높낮이)</div>
+                    </div>
+                </div>
 
-    // ==========================================
-    // 5. 교과서 정리해요 퀴즈 체크
-    // ==========================================
-    function checkQuiz() {
-      const ids = ['q-glock-amp', 'q-glock-pitch', 'q-kal-amp', 'q-kal-pitch', 'q-uku-amp', 'q-uku-pitch'];
-      let correctCount = 0;
-      let selectedCount = 0;
+                <!-- 현재 연주 데이터 수치 표시 -->
+                <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
+                        <div class="text-[11px] text-slate-400">음이름</div>
+                        <div id="infoNote" class="font-title text-lg text-white mt-0.5">-</div>
+                    </div>
+                    <div class="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
+                        <div class="text-[11px] text-slate-400">소리 세기</div>
+                        <div id="infoAmp" class="font-title text-lg text-amber-400 mt-0.5">-</div>
+                    </div>
+                    <div class="bg-slate-800/80 rounded-xl p-2.5 border border-slate-700/70">
+                        <div class="text-[11px] text-slate-400">높낮이(진동수)</div>
+                        <div id="infoFreq" class="font-title text-lg text-sky-400 mt-0.5">-</div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-      ids.forEach(id => {
-        const val = document.getElementById(id).value;
-        if (val !== '') selectedCount++;
-        if (val === 'correct') correctCount++;
-      });
+        <!-- 3단계: 교과서 '정리해요' 활동 -->
+        <section class="bg-white rounded-2xl shadow-sm border border-sky-100 p-5">
+            <h2 class="font-title text-xl text-sky-700 flex items-center gap-2 mb-3">
+                <span class="bg-sky-100 text-sky-700 w-7 h-7 rounded-full inline-flex items-center justify-center text-base">3</span>
+                실험 결과 정리해요
+            </h2>
+            <p class="text-sm text-slate-600 mb-4">실험을 통해 알게 된 소리의 세기와 높낮이를 내는 방법을 빈칸에서 골라 확인해 보세요.</p>
 
-      const res = document.getElementById('quizResult');
-      if (selectedCount < 6) {
-        res.className = 'mt-3 text-sm font-bold text-indigo-600';
-        res.innerText = `진행 중: ${selectedCount} / 6개 선택됨 (현재 ${correctCount}개 정답)`;
-      } else if (correctCount === 6) {
-        res.className = 'mt-3 text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg';
-        res.innerText = '🎉 완벽합니다! 악기의 세기와 높낮이가 달라지는 과학적 원리를 모두 정확하게 정리했습니다.';
-      } else {
-        res.className = 'mt-3 text-sm font-bold text-rose-600 bg-rose-50 px-3 py-2 rounded-lg';
-        res.innerText = `💡 6개 중 ${correctCount}개 맞았습니다. 위 시뮬레이터에서 다시 소리를 내 보며 틀린 부분을 고쳐 보세요!`;
-      }
-    }
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 글로켄슈필 정리 -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-1.5">🎹 글로켄슈필</h3>
+                    <ul class="text-sm text-slate-700 space-y-2">
+                        <li>• 큰 소리를 내려면 채로 건반을 
+                            <select onchange="checkSummary(this, '세게')" class="border border-slate-300 rounded px-2 py-1 bg-white font-bold text-indigo-600">
+                                <option value="">선택</option>
+                                <option value="세게">세게</option>
+                                <option value="약하게">약하게</option>
+                            </select> 칩니다.
+                        </li>
+                        <li>• 높은 소리를 내려면 길이가 
+                            <select onchange="checkSummary(this, '짧은')" class="border border-slate-300 rounded px-2 py-1 bg-white font-bold text-sky-600">
+                                <option value="">선택</option>
+                                <option value="긴">긴</option>
+                                <option value="짧은">짧은</option>
+                            </select> 건반을 칩니다.
+                        </li>
+                    </ul>
+                </div>
 
-    // 초기 실행
-    renderMissionCard();
-    selectInstrument('ukulele');
-  </script>
+                <!-- 칼림바 정리 -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-1.5">🪘 칼림바</h3>
+                    <ul class="text-sm text-slate-700 space-y-2">
+                        <li>• 작은 소리를 내려면 건반을 
+                            <select onchange="checkSummary(this, '약하게')" class="border border-slate-300 rounded px-2 py-1 bg-white font-bold text-indigo-600">
+                                <option value="">선택</option>
+                                <option value="세게">세게</option>
+                                <option value="약하게">약하게</option>
+                            </select> 튕깁니다.
+                        </li>
+                        <li>• 낮은 소리를 내려면 길이가 
+                            <select onchange="checkSummary(this, '긴')" class="border border-slate-300 rounded px-2 py-1 bg-white font-bold text-sky-600">
+                                <option value="">선택</option>
+                                <option value="긴">긴</option>
+                                <option value="짧은">짧은</option>
+                            </select> 건반을 튕깁니다.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 우쿨렐레 정리 -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-1.5">🎸 우쿨렐레</h3>
+                    <ul class="text-sm text-slate-700 space-y-2">
+                        <li>• 큰 소리를 내려면 줄을 
+                            <select onchange="checkSummary(this, '세게')" class="border border-slate-300 rounded px-2 py-1 bg-white font-bold text-indigo-600">
+                                <option value="">선택</option>
+                                <option value="세게">세게</option>
+                                <option value="약하게">약하게</option>
+                            </select> 튕깁니다.
+                        </li>
+                        <li>• 높은 소리를 내려면 줄의 
+                            <select onchange="checkSummary(this, '짧게')" class="border border-slate-300 rounded px-2 py-1 bg-white font-bold text-sky-600">
+                                <option value="">선택</option>
+                                <option value="길게">길게</option>
+                                <option value="짧게">짧게</option>
+                            </select> 짚어 진동 부분을 줄입니다.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // ==========================================
+        // 1. Web Audio API 오디오 엔진 (모바일 즉시 잠금 해제)
+        // ==========================================
+        let audioCtx = null;
+        let currentWave = {
+            freq: 0,
+            amp: 0,
+            decay: 0,
+            type: 'sine'
+        };
+
+        function unlockAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playInstrumentSound(instrument, freq, noteName) {
+            unlockAudioContext();
+            const forceVal = parseInt(document.getElementById('forceSlider').value, 10);
+            const gainLevel = (forceVal / 100) * 0.75;
+            const now = audioCtx.currentTime;
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            if (instrument === 'glockenspiel') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+
+                const overtone = audioCtx.createOscillator();
+                const overtoneGain = audioCtx.createGain();
+                overtone.type = 'sine';
+                overtone.frequency.setValueAtTime(freq * 2.75, now);
+                overtoneGain.gain.setValueAtTime(gainLevel * 0.25, now);
+                overtoneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+                overtone.connect(overtoneGain);
+                overtoneGain.connect(audioCtx.destination);
+                overtone.start(now);
+                overtone.stop(now + 0.4);
+
+                gainNode.gain.setValueAtTime(0.001, now);
+                gainNode.gain.linearRampToValueAtTime(gainLevel, now + 0.008);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 1.5);
+
+            } else if (instrument === 'kalimba') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now);
+
+                const subOsc = audioCtx.createOscillator();
+                const subGain = audioCtx.createGain();
+                subOsc.type = 'sine';
+                subOsc.frequency.setValueAtTime(freq * 2, now);
+                subGain.gain.setValueAtTime(gainLevel * 0.2, now);
+                subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+                subOsc.connect(subGain);
+                subGain.connect(audioCtx.destination);
+                subOsc.start(now);
+                subOsc.stop(now + 0.25);
+
+                gainNode.gain.setValueAtTime(0.001, now);
+                gainNode.gain.linearRampToValueAtTime(gainLevel * 1.1, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 1.2);
+
+            } else if (instrument === 'ukulele') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * 4, now);
+                filter.frequency.exponentialRampToValueAtTime(freq * 1.2, now + 0.8);
+
+                gainNode.gain.setValueAtTime(0.001, now);
+                gainNode.gain.linearRampToValueAtTime(gainLevel * 0.85, now + 0.015);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+
+                osc.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 1.4);
+            }
+
+            currentWave = {
+                freq: freq,
+                amp: forceVal,
+                decay: 1.0,
+                type: instrument
+            };
+
+            document.getElementById('infoNote').innerText = noteName;
+            document.getElementById('infoAmp').innerText = forceVal >= 75 ? `큼 (${forceVal}%)` : (forceVal <= 35 ? `작음 (${forceVal}%)` : `보통 (${forceVal}%)`);
+            document.getElementById('infoFreq').innerText = `${Math.round(freq)} Hz`;
+            
+            const badge = document.getElementById('statusBadge');
+            badge.innerText = '소리 발생 중';
+            badge.className = 'text-xs bg-emerald-900/80 text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-600';
+        }
+
+        // ==========================================
+        // 2. 카드 뽑기 및 미션 문장 생성
+        // ==========================================
+        const instrumentsData = [
+            { id: 'glockenspiel', name: '글로켄슈필', particle: '로', icon: '🎹' },
+            { id: 'kalimba', name: '칼림바', particle: '로', icon: '🪘' },
+            { id: 'ukulele', name: '우쿨렐레', particle: '로', icon: '🎸' }
+        ];
+
+        const soundsData = [
+            { id: 'louder', category: '세기', text: '세기를 점점 크게' },
+            { id: 'softer', category: '세기', text: '세기를 점점 작게' },
+            { id: 'higher', category: '높낮이', text: '높낮이를 점점 높게' },
+            { id: 'lower', category: '높낮이', text: '높낮이를 점점 낮게' }
+        ];
+
+        let selectedInstCard = null;
+        let selectedSoundCard = null;
+
+        function drawCards() {
+            selectedInstCard = instrumentsData[Math.floor(Math.random() * instrumentsData.length)];
+            selectedSoundCard = soundsData[Math.floor(Math.random() * soundsData.length)];
+
+            updateCardUI();
+            selectInstrument(selectedInstCard.id);
+        }
+
+        function drawSingleCard(type) {
+            if (type === 'instrument') {
+                selectedInstCard = instrumentsData[Math.floor(Math.random() * instrumentsData.length)];
+                selectInstrument(selectedInstCard.id);
+            } else {
+                selectedSoundCard = soundsData[Math.floor(Math.random() * soundsData.length)];
+            }
+            updateCardUI();
+        }
+
+        function updateCardUI() {
+            if (selectedInstCard) {
+                document.getElementById('instCardIcon').innerText = selectedInstCard.icon;
+                document.getElementById('instCardText').innerText = selectedInstCard.name;
+                document.getElementById('instCardInner').classList.add('card-flipped');
+            }
+            if (selectedSoundCard) {
+                document.getElementById('soundCardBadge').innerText = selectedSoundCard.category;
+                document.getElementById('soundCardText').innerText = selectedSoundCard.text;
+                document.getElementById('soundCardInner').classList.add('card-flipped');
+            }
+
+            if (selectedInstCard && selectedSoundCard) {
+                document.getElementById('missionSentence').innerHTML = 
+                    `<span class="text-emerald-600 underline decoration-emerald-300">${selectedInstCard.name}</span>${selectedInstCard.particle} <span class="text-amber-600 underline decoration-amber-300">${selectedSoundCard.text}</span> 소리를 낼 거야!`;
+                document.getElementById('missionHint').innerText = 
+                    selectedSoundCard.category === '세기' 
+                    ? '👉 위쪽 [치거나 튕기는 세기] 슬라이더를 조절하면서 같은 음을 반복해서 쳐 보세요!' 
+                    : '👉 건반의 길이나 줄의 길이를 다르게 하면서 차례대로 연주해 보세요!';
+            }
+        }
+
+        function resetCards() {
+            selectedInstCard = null;
+            selectedSoundCard = null;
+            document.getElementById('instCardInner').classList.remove('card-flipped');
+            document.getElementById('soundCardInner').classList.remove('card-flipped');
+            document.getElementById('missionSentence').innerText = '카드를 뽑아 오늘의 연주 미션을 확인해 보세요!';
+            document.getElementById('missionHint').innerText = '💡 팁: 카드를 뽑으면 아래에서 해당 악기가 자동으로 선택됩니다.';
+        }
+
+        // ==========================================
+        // 3. 악기별 UI 렌더링 및 터치 즉시 반응 로직
+        // ==========================================
+        let currentInstrument = 'glockenspiel';
+        let ukuleleFret = 0;
+
+        const glockenspielNotes = [
+            { note: '도 (C5)', freq: 523.25, height: 'h-44', color: 'bg-rose-400' },
+            { note: '레 (D5)', freq: 587.33, height: 'h-40', color: 'bg-orange-400' },
+            { note: '미 (E5)', freq: 659.25, height: 'h-36', color: 'bg-amber-400' },
+            { note: '파 (F5)', freq: 698.46, height: 'h-32', color: 'bg-emerald-400' },
+            { note: '솔 (G5)', freq: 783.99, height: 'h-28', color: 'bg-teal-400' },
+            { note: '라 (A5)', freq: 880.00, height: 'h-24', color: 'bg-sky-400' },
+            { note: '시 (B5)', freq: 987.77, height: 'h-20', color: 'bg-indigo-400' },
+            { note: '높은 도 (C6)', freq: 1046.50, height: 'h-16', color: 'bg-purple-400' }
+        ];
+
+        const kalimbaNotes = [
+            { note: '레6 (D6)', freq: 1174.66, height: 'h-24' },
+            { note: '시5 (B5)', freq: 987.77, height: 'h-28' },
+            { note: '솔5 (G5)', freq: 783.99, height: 'h-32' },
+            { note: '미5 (E5)', freq: 659.25, height: 'h-36' },
+            { note: '도5 (C5)', freq: 523.25, height: 'h-44' },
+            { note: '레5 (D5)', freq: 587.33, height: 'h-40' },
+            { note: '파5 (F5)', freq: 698.46, height: 'h-34' },
+            { note: '라5 (A5)', freq: 880.00, height: 'h-30' },
+            { note: '도6 (C6)', freq: 1046.50, height: 'h-26' }
+        ];
+
+        const ukuleleStrings = [
+            { name: '4번 줄 (솔)', baseFreq: 392.00, thickness: 'h-1.5' },
+            { name: '3번 줄 (도)', baseFreq: 261.63, thickness: 'h-2' },
+            { name: '2번 줄 (미)', baseFreq: 329.63, thickness: 'h-1.5' },
+            { name: '1번 줄 (라)', baseFreq: 440.00, thickness: 'h-1' }
+        ];
+
+        function selectInstrument(inst) {
+            currentInstrument = inst;
+            
+            document.querySelectorAll('.inst-tab').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-sky-700', 'shadow-sm');
+                btn.classList.add('text-slate-600');
+            });
+            const activeTab = document.getElementById(`tab-${inst}`);
+            activeTab.classList.add('bg-white', 'text-sky-700', 'shadow-sm');
+            activeTab.classList.remove('text-slate-600');
+
+            renderInstrumentStage();
+        }
+
+        function renderInstrumentStage() {
+            const stage = document.getElementById('instrumentStage');
+
+            if (currentInstrument === 'glockenspiel') {
+                let html = `
+                    <p class="text-xs text-slate-600 mb-3 font-medium">건반이 <strong class="text-rose-600">길수록 낮은 소리</strong>, <strong class="text-purple-600">짧을수록 높은 소리</strong>가 납니다.</p>
+                    <div class="flex items-end justify-center gap-2 sm:gap-3 h-48 w-full px-1">
+                `;
+                glockenspielNotes.forEach((item, idx) => {
+                    html += `
+                        <button type="button" id="g-key-${idx}" onpointerdown="triggerGlockenspiel(event, ${idx})" 
+                            class="${item.color} ${item.height} flex-1 max-w-[3.2rem] rounded-b-xl rounded-t-md shadow-md border-b-4 border-black/20 flex flex-col justify-between items-center py-2 text-white font-bold transition-transform cursor-pointer">
+                            <span class="w-2 h-2 rounded-full bg-white/70 pointer-events-none"></span>
+                            <span class="text-xs sm:text-sm drop-shadow pointer-events-none">${item.note.split(' ')[0]}</span>
+                            <span class="w-2 h-2 rounded-full bg-white/70 pointer-events-none"></span>
+                        </button>
+                    `;
+                });
+                html += `</div>`;
+                stage.innerHTML = html;
+
+            } else if (currentInstrument === 'kalimba') {
+                let html = `
+                    <p class="text-xs text-slate-600 mb-3 font-medium">가운데 <strong class="text-amber-700">긴 건반은 낮은 소리</strong>, 바깥쪽 <strong class="text-sky-700">짧은 건반은 높은 소리</strong>가 납니다.</p>
+                    <div class="bg-amber-700/90 px-3 sm:px-4 pt-3 pb-6 rounded-2xl shadow-inner flex items-start justify-center gap-1.5 sm:gap-2 w-full max-w-md border-4 border-amber-900/40">
+                `;
+                kalimbaNotes.forEach((item, idx) => {
+                    html += `
+                        <button type="button" id="k-key-${idx}" onpointerdown="triggerKalimba(event, ${idx})" 
+                            class="bg-gradient-to-b from-slate-200 to-slate-400 ${item.height} flex-1 max-w-[2.4rem] rounded-b-lg shadow-md border-b-4 border-slate-500 flex flex-col justify-end items-center pb-2 text-slate-800 font-bold transition-transform cursor-pointer">
+                            <span class="text-[11px] sm:text-xs pointer-events-none">${item.note.replace(/[0-9]/g, '')}</span>
+                        </button>
+                    `;
+                });
+                html += `</div>`;
+                stage.innerHTML = html;
+
+            } else if (currentInstrument === 'ukulele') {
+                let html = `
+                    <div class="w-full flex flex-col items-center">
+                        <p class="text-xs text-slate-600 mb-2 font-medium">손가락으로 짚는 위치를 바꿔 <strong class="text-indigo-600">진동하는 줄의 길이</strong>를 조절한 뒤 줄을 터치해 튕겨 보세요!</p>
+                        
+                        <!-- 줄 길이(프렛) 조절 버튼 -->
+                        <div class="flex flex-wrap justify-center gap-1.5 mb-4 bg-white p-1.5 rounded-xl border border-amber-200 shadow-sm">
+                            <button type="button" onpointerdown="setUkuleleFret(0)" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${ukuleleFret === 0 ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-amber-50'}">
+                                안 짚음 (줄 길게 · 낮은음)
+                            </button>
+                            <button type="button" onpointerdown="setUkuleleFret(1)" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${ukuleleFret === 1 ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-amber-50'}">
+                                중간 짚음 (중간 길이 · 중간음)
+                            </button>
+                            <button type="button" onpointerdown="setUkuleleFret(2)" class="px-3 py-1.5 rounded-lg text-xs font-bold transition ${ukuleleFret === 2 ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-amber-50'}">
+                                안쪽 짚음 (줄 짧게 · 높은음)
+                            </button>
+                        </div>
+
+                        <!-- 우쿨렐레 지판 및 울림통 시각화 (태블릿 터치 영역 확대) -->
+                        <div class="relative w-full max-w-md bg-amber-800 rounded-xl p-4 shadow-inner border-4 border-amber-950/50 flex flex-col justify-between gap-2">
+                            <div class="absolute right-8 top-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-amber-950 border-4 border-amber-300/60 pointer-events-none"></div>
+                            
+                            ${ukuleleFret > 0 ? `<div style="left: ${ukuleleFret * 28}%" class="absolute top-0 bottom-0 w-2 bg-rose-500/80 z-10 pointer-events-none flex items-center justify-center"><span class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap -mt-20">손가락 짚음</span></div>` : ''}
+                `;
+
+                ukuleleStrings.forEach((str, idx) => {
+                    html += `
+                        <div onpointerdown="triggerUkulele(event, ${idx})" class="relative z-20 flex items-center gap-2 cursor-pointer group py-2.5">
+                            <span class="text-xs text-amber-200 w-20 font-medium pointer-events-none">${str.name}</span>
+                            <div id="u-str-${idx}" class="flex-1 ${str.thickness} bg-amber-100 group-active:bg-white rounded-full shadow transition-all pointer-events-none"></div>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+                stage.innerHTML = html;
+            }
+        }
+
+        function triggerGlockenspiel(e, idx) {
+            if (e) e.preventDefault();
+            const item = glockenspielNotes[idx];
+            const el = document.getElementById(`g-key-${idx}`);
+            if (el) {
+                el.classList.remove('key-active');
+                void el.offsetWidth;
+                el.classList.add('key-active');
+                setTimeout(() => el.classList.remove('key-active'), 130);
+            }
+            playInstrumentSound('glockenspiel', item.freq, item.note);
+        }
+
+        function triggerKalimba(e, idx) {
+            if (e) e.preventDefault();
+            const item = kalimbaNotes[idx];
+            const el = document.getElementById(`k-key-${idx}`);
+            if (el) {
+                el.classList.remove('key-active');
+                void el.offsetWidth;
+                el.classList.add('key-active');
+                setTimeout(() => el.classList.remove('key-active'), 130);
+            }
+            playInstrumentSound('kalimba', item.freq, item.note);
+        }
+
+        function setUkuleleFret(fretLevel) {
+            ukuleleFret = fretLevel;
+            renderInstrumentStage();
+        }
+
+        function triggerUkulele(e, idx) {
+            if (e) e.preventDefault();
+            const str = ukuleleStrings[idx];
+            const el = document.getElementById(`u-str-${idx}`);
+            if (el) {
+                el.classList.remove('string-vibrate');
+                void el.offsetWidth;
+                el.classList.add('string-vibrate');
+            }
+            const multiplier = Math.pow(2, (ukuleleFret * 3) / 12);
+            const finalFreq = str.baseFreq * multiplier;
+            const fretText = ukuleleFret === 0 ? '개방현' : (ukuleleFret === 1 ? '중간 짚음' : '짧게 짚음');
+            playInstrumentSound('ukulele', finalFreq, `${str.name.split(' ')[2]} (${fretText})`);
+        }
+
+        function updateForceLabel(val) {
+            const label = document.getElementById('forceLabel');
+            if (val <= 35) {
+                label.innerText = `약한 세기 (${val}%)`;
+                label.className = 'text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full';
+            } else if (val >= 75) {
+                label.innerText = `강한 세기 (${val}%)`;
+                label.className = 'text-sm font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full';
+            } else {
+                label.innerText = `보통 세기 (${val}%)`;
+                label.className = 'text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full';
+            }
+        }
+
+        // ==========================================
+        // 4. 미션 비교 자동 연주 데모
+        // ==========================================
+        let demoTimers = [];
+
+        function clearDemoTimers() {
+            demoTimers.forEach(t => clearTimeout(t));
+            demoTimers = [];
+        }
+
+        function playDemo(mode) {
+            clearDemoTimers();
+            const slider = document.getElementById('forceSlider');
+
+            if (mode === 'louder' || mode === 'softer') {
+                const forces = mode === 'louder' ? [20, 45, 75, 100] : [100, 75, 45, 20];
+                forces.forEach((f, step) => {
+                    const timer = setTimeout(() => {
+                        slider.value = f;
+                        updateForceLabel(f);
+                        if (currentInstrument === 'glockenspiel') triggerGlockenspiel(null, 0);
+                        else if (currentInstrument === 'kalimba') triggerKalimba(null, 4);
+                        else if (currentInstrument === 'ukulele') triggerUkulele(null, 1);
+                    }, step * 550);
+                    demoTimers.push(timer);
+                });
+            } else if (mode === 'higher' || mode === 'lower') {
+                slider.value = 70;
+                updateForceLabel(70);
+
+                if (currentInstrument === 'glockenspiel') {
+                    const indices = mode === 'higher' ? [0, 2, 4, 7] : [7, 4, 2, 0];
+                    indices.forEach((idx, step) => {
+                        demoTimers.push(setTimeout(() => triggerGlockenspiel(null, idx), step * 500));
+                    });
+                } else if (currentInstrument === 'kalimba') {
+                    const indices = mode === 'higher' ? [4, 5, 7, 8] : [8, 7, 5, 4];
+                    indices.forEach((idx, step) => {
+                        demoTimers.push(setTimeout(() => triggerKalimba(null, idx), step * 500));
+                    });
+                } else if (currentInstrument === 'ukulele') {
+                    const frets = mode === 'higher' ? [0, 1, 2] : [2, 1, 0];
+                    frets.forEach((fret, step) => {
+                        demoTimers.push(setTimeout(() => {
+                            setUkuleleFret(fret);
+                            triggerUkulele(null, 1);
+                        }, step * 600));
+                    });
+                }
+            }
+        }
+
+        // ==========================================
+        // 5. 실시간 소리 파형(오실로스코프) 애니메이션
+        // ==========================================
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        let phase = 0;
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawWaveLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = currentWave.decay > 0.05 ? '#38bdf8' : '#475569';
+
+            const midY = canvas.height / 2;
+            const maxAmpPx = (canvas.height * 0.42) * (currentWave.amp / 100) * currentWave.decay;
+            const visualFreq = (currentWave.freq / 250) * 0.04;
+
+            for (let x = 0; x < canvas.width; x++) {
+                const y = midY + Math.sin(x * visualFreq + phase) * maxAmpPx;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            if (currentWave.decay > 0.01) {
+                currentWave.decay *= 0.975;
+                phase -= 0.18;
+            } else {
+                currentWave.decay = 0;
+                const badge = document.getElementById('statusBadge');
+                if (badge.innerText !== '대기 중') {
+                    badge.innerText = '대기 중';
+                    badge.className = 'text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full border border-slate-700';
+                }
+            }
+
+            requestAnimationFrame(drawWaveLoop);
+        }
+        drawWaveLoop();
+
+        // ==========================================
+        // 6. 정리 활동 정답 확인
+        // ==========================================
+        function checkSummary(selectEl, correctAnswer) {
+            if (selectEl.value === '') {
+                selectEl.className = 'border border-slate-300 rounded px-2 py-1 bg-white font-bold text-indigo-600';
+            } else if (selectEl.value === correctAnswer) {
+                selectEl.className = 'border-2 border-emerald-500 rounded px-2 py-1 bg-emerald-50 font-bold text-emerald-700';
+            } else {
+                selectEl.className = 'border-2 border-rose-500 rounded px-2 py-1 bg-rose-50 font-bold text-rose-700';
+            }
+        }
+
+        // 초기 악기 렌더링
+        renderInstrumentStage();
+    </script>
 </body>
 </html>
